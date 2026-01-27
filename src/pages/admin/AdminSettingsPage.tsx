@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, ToggleLeft, Globe, CreditCard, AlertCircle, Truck, Percent, Plus, Trash2 } from 'lucide-react';
+import { Save, ToggleLeft, Globe, CreditCard, AlertCircle, Truck, Percent, Plus, Trash2, ShieldCheck } from 'lucide-react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { fetchAppSettings, updateAppSetting } from '@/lib/adminApi';
+import { clearCODSettingsCache } from '@/lib/codSecurity';
 import type { 
   AppSetting, 
   RegistrationSettings, 
@@ -16,6 +17,7 @@ import type {
   PlatformFeeSettings,
   ShippingZonesSettings,
   ShippingZone,
+  CODSettings,
 } from '@/types/admin';
 import { toast } from 'sonner';
 
@@ -88,6 +90,7 @@ export default function AdminSettingsPage() {
   const shippingBaseFee = getSetting('shipping_base_fee')?.value as unknown as ShippingFeeSettings | undefined;
   const platformFee = getSetting('platform_fee')?.value as unknown as PlatformFeeSettings | undefined;
   const shippingZones = getSetting('shipping_zones')?.value as unknown as ShippingZonesSettings | undefined;
+  const codSettings = getSetting('cod_settings')?.value as unknown as CODSettings | undefined;
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -154,6 +157,37 @@ export default function AdminSettingsPage() {
                       disabled={saving === 'registration_courier'}
                     />
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* COD Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5" />
+                    Pengaturan COD (Cash on Delivery)
+                  </CardTitle>
+                  <CardDescription>
+                    Konfigurasi keamanan dan batasan fitur COD untuk produk makanan
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <CODSettingsForm
+                    initialValues={codSettings}
+                    onSave={async (values) => {
+                      setSaving('cod_settings');
+                      const success = await updateAppSetting('cod_settings', values as unknown as Record<string, unknown>);
+                      if (success) {
+                        clearCODSettingsCache(); // Clear cache when settings are updated
+                        toast.success('Pengaturan COD berhasil disimpan');
+                        loadSettings();
+                      } else {
+                        toast.error('Gagal menyimpan pengaturan');
+                      }
+                      setSaving(null);
+                    }}
+                    isSaving={saving === 'cod_settings'}
+                  />
                 </CardContent>
               </Card>
 
@@ -777,6 +811,176 @@ function PlatformFeeForm({
             />
           </div>
         </div>
+      )}
+      
+      <Button type="submit" disabled={isSaving}>
+        <Save className="h-4 w-4 mr-2" />
+        {isSaving ? 'Menyimpan...' : 'Simpan'}
+      </Button>
+    </form>
+  );
+}
+
+// COD Settings Form Component
+function CODSettingsForm({ 
+  initialValues, 
+  onSave, 
+  isSaving 
+}: { 
+  initialValues?: CODSettings; 
+  onSave: (values: CODSettings) => Promise<void>;
+  isSaving: boolean;
+}) {
+  const [enabled, setEnabled] = useState(initialValues?.enabled ?? true);
+  const [maxAmount, setMaxAmount] = useState(initialValues?.max_amount?.toString() || '75000');
+  const [maxDistance, setMaxDistance] = useState(initialValues?.max_distance_km?.toString() || '3');
+  const [serviceFee, setServiceFee] = useState(initialValues?.service_fee?.toString() || '1000');
+  const [minTrustScore, setMinTrustScore] = useState(initialValues?.min_trust_score?.toString() || '50');
+  const [confirmationTimeout, setConfirmationTimeout] = useState(initialValues?.confirmation_timeout_minutes?.toString() || '15');
+  const [penaltyPoints, setPenaltyPoints] = useState(initialValues?.penalty_points?.toString() || '50');
+  const [successBonus, setSuccessBonus] = useState(initialValues?.success_bonus_points?.toString() || '1');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({ 
+      enabled,
+      max_amount: parseInt(maxAmount) || 75000,
+      max_distance_km: parseInt(maxDistance) || 3,
+      service_fee: parseInt(serviceFee) || 1000,
+      min_trust_score: parseInt(minTrustScore) || 50,
+      confirmation_timeout_minutes: parseInt(confirmationTimeout) || 15,
+      penalty_points: parseInt(penaltyPoints) || 50,
+      success_bonus_points: parseInt(successBonus) || 1,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
+        <div>
+          <p className="font-medium text-sm">Aktifkan Fitur COD</p>
+          <p className="text-xs text-muted-foreground">Izinkan pembayaran Cash on Delivery</p>
+        </div>
+        <Switch
+          checked={enabled}
+          onCheckedChange={setEnabled}
+        />
+      </div>
+      
+      {enabled && (
+        <>
+          {/* Transaction Limits */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm text-muted-foreground">Batasan Transaksi</h4>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Maksimal Nominal COD (Rp)</Label>
+                <Input
+                  type="number"
+                  value={maxAmount}
+                  onChange={(e) => setMaxAmount(e.target.value)}
+                  placeholder="75000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Transaksi di atas nominal ini wajib bayar dimuka
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Maksimal Jarak (KM)</Label>
+                <Input
+                  type="number"
+                  value={maxDistance}
+                  onChange={(e) => setMaxDistance(e.target.value)}
+                  placeholder="3"
+                />
+                <p className="text-xs text-muted-foreground">
+                  COD hanya aktif untuk pembeli dalam radius ini
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Fees */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm text-muted-foreground">Biaya & Timeout</h4>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Biaya Layanan COD (Rp)</Label>
+                <Input
+                  type="number"
+                  value={serviceFee}
+                  onChange={(e) => setServiceFee(e.target.value)}
+                  placeholder="1000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Masuk ke Dana Talangan Komunitas
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Timeout Konfirmasi (menit)</Label>
+                <Input
+                  type="number"
+                  value={confirmationTimeout}
+                  onChange={(e) => setConfirmationTimeout(e.target.value)}
+                  placeholder="15"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Pesanan auto-cancel jika tidak dikonfirmasi
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Trust Score Settings */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm text-muted-foreground">Sistem Kepercayaan</h4>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Skor Minimum</Label>
+                <Input
+                  type="number"
+                  value={minTrustScore}
+                  onChange={(e) => setMinTrustScore(e.target.value)}
+                  placeholder="50"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Skor di bawah ini = COD dimatikan
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Poin Penalti Gagal COD</Label>
+                <Input
+                  type="number"
+                  value={penaltyPoints}
+                  onChange={(e) => setPenaltyPoints(e.target.value)}
+                  placeholder="50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Bonus Sukses COD</Label>
+                <Input
+                  type="number"
+                  value={successBonus}
+                  onChange={(e) => setSuccessBonus(e.target.value)}
+                  placeholder="1"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div className="text-xs text-muted-foreground">
+              <p className="font-medium mb-1">Cara Kerja Sistem Kepercayaan:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li>Setiap user memulai dengan skor 100</li>
+                <li>COD sukses: +{successBonus} poin</li>
+                <li>COD gagal/ditolak: -{penaltyPoints} poin</li>
+                <li>Skor &lt; {minTrustScore}: Fitur COD otomatis dimatikan permanen</li>
+              </ul>
+            </div>
+          </div>
+        </>
       )}
       
       <Button type="submit" disabled={isSaving}>
