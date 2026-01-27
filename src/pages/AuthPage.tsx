@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { getRedirectPathForRoles } from '@/types/auth';
 import { z } from 'zod';
 
 const signUpSchema = z.object({
@@ -26,7 +27,8 @@ const signInSchema = z.object({
 
 export default function AuthPage() {
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const location = useLocation();
+  const { user, roles, loading: authLoading, rolesLoading, signIn, signUp } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -38,6 +40,17 @@ export default function AuthPage() {
     password: '',
     confirmPassword: '',
   });
+
+  // Redirect authenticated users to their role-specific dashboard
+  useEffect(() => {
+    if (authLoading || rolesLoading) return;
+    
+    if (user && roles.length > 0) {
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
+      const redirectPath = from || getRedirectPathForRoles(roles);
+      navigate(redirectPath, { replace: true });
+    }
+  }, [user, roles, authLoading, rolesLoading, navigate, location]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -73,7 +86,7 @@ export default function AuthPage() {
           });
         } else {
           toast({ title: 'Berhasil masuk!' });
-          navigate('/');
+          // Redirect will happen automatically via useEffect
         }
       } else {
         const result = signUpSchema.safeParse(formData);
@@ -104,6 +117,23 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
+
+  // Show loading while checking auth state
+  if (authLoading || rolesLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Memuat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if user is already logged in (will redirect)
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="mobile-shell bg-background flex flex-col min-h-screen">
