@@ -430,33 +430,60 @@ export type Database = {
       profiles: {
         Row: {
           address: string | null
+          address_detail: string | null
+          city_id: string | null
+          city_name: string | null
           created_at: string
+          district_id: string | null
+          district_name: string | null
           full_name: string
           id: string
           phone: string | null
+          province_id: string | null
+          province_name: string | null
           updated_at: string
           user_id: string
           village: string | null
+          village_id: string | null
+          village_name: string | null
         }
         Insert: {
           address?: string | null
+          address_detail?: string | null
+          city_id?: string | null
+          city_name?: string | null
           created_at?: string
+          district_id?: string | null
+          district_name?: string | null
           full_name?: string
           id?: string
           phone?: string | null
+          province_id?: string | null
+          province_name?: string | null
           updated_at?: string
           user_id: string
           village?: string | null
+          village_id?: string | null
+          village_name?: string | null
         }
         Update: {
           address?: string | null
+          address_detail?: string | null
+          city_id?: string | null
+          city_name?: string | null
           created_at?: string
+          district_id?: string | null
+          district_name?: string | null
           full_name?: string
           id?: string
           phone?: string | null
+          province_id?: string | null
+          province_name?: string | null
           updated_at?: string
           user_id?: string
           village?: string | null
+          village_id?: string | null
+          village_name?: string | null
         }
         Relationships: []
       }

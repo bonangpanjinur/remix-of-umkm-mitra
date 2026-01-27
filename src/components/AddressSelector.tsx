@@ -17,7 +17,7 @@ import {
   type Region,
 } from '@/lib/addressApi';
 
-interface AddressData {
+export interface AddressData {
   province: string;
   provinceName: string;
   city: string;
@@ -33,9 +33,15 @@ interface AddressSelectorProps {
   value: AddressData;
   onChange: (data: AddressData) => void;
   disabled?: boolean;
+  initialNames?: {
+    provinceName?: string;
+    cityName?: string;
+    districtName?: string;
+    villageName?: string;
+  };
 }
 
-export function AddressSelector({ value, onChange, disabled }: AddressSelectorProps) {
+export function AddressSelector({ value, onChange, disabled, initialNames }: AddressSelectorProps) {
   const [provinces, setProvinces] = useState<Region[]>([]);
   const [cities, setCities] = useState<Region[]>([]);
   const [districts, setDistricts] = useState<Region[]>([]);
@@ -46,6 +52,8 @@ export function AddressSelector({ value, onChange, disabled }: AddressSelectorPr
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingVillages, setLoadingVillages] = useState(false);
 
+  const [initialized, setInitialized] = useState(false);
+
   // Load provinces on mount
   useEffect(() => {
     const loadProvinces = async () => {
@@ -53,6 +61,20 @@ export function AddressSelector({ value, onChange, disabled }: AddressSelectorPr
       const data = await fetchProvinces();
       setProvinces(data);
       setLoadingProvinces(false);
+
+      // Auto-select province by name if provided
+      if (initialNames?.provinceName && !value.province && !initialized) {
+        const matchedProvince = data.find(
+          (p) => p.name.toLowerCase() === initialNames.provinceName?.toLowerCase()
+        );
+        if (matchedProvince) {
+          onChange({
+            ...value,
+            province: matchedProvince.id,
+            provinceName: matchedProvince.name,
+          });
+        }
+      }
     };
     loadProvinces();
   }, []);
@@ -65,6 +87,20 @@ export function AddressSelector({ value, onChange, disabled }: AddressSelectorPr
         const data = await fetchRegencies(value.province);
         setCities(data);
         setLoadingCities(false);
+
+        // Auto-select city by name if provided
+        if (initialNames?.cityName && !value.city && !initialized) {
+          const matchedCity = data.find(
+            (c) => c.name.toLowerCase() === initialNames.cityName?.toLowerCase()
+          );
+          if (matchedCity) {
+            onChange({
+              ...value,
+              city: matchedCity.id,
+              cityName: matchedCity.name,
+            });
+          }
+        }
       };
       loadCities();
     } else {
@@ -80,6 +116,20 @@ export function AddressSelector({ value, onChange, disabled }: AddressSelectorPr
         const data = await fetchDistricts(value.city);
         setDistricts(data);
         setLoadingDistricts(false);
+
+        // Auto-select district by name if provided
+        if (initialNames?.districtName && !value.district && !initialized) {
+          const matchedDistrict = data.find(
+            (d) => d.name.toLowerCase() === initialNames.districtName?.toLowerCase()
+          );
+          if (matchedDistrict) {
+            onChange({
+              ...value,
+              district: matchedDistrict.id,
+              districtName: matchedDistrict.name,
+            });
+          }
+        }
       };
       loadDistricts();
     } else {
@@ -95,6 +145,21 @@ export function AddressSelector({ value, onChange, disabled }: AddressSelectorPr
         const data = await fetchVillages(value.district);
         setVillages(data);
         setLoadingVillages(false);
+
+        // Auto-select village by name if provided
+        if (initialNames?.villageName && !value.village && !initialized) {
+          const matchedVillage = data.find(
+            (v) => v.name.toLowerCase() === initialNames.villageName?.toLowerCase()
+          );
+          if (matchedVillage) {
+            onChange({
+              ...value,
+              village: matchedVillage.id,
+              villageName: matchedVillage.name,
+            });
+            setInitialized(true); // Mark as initialized after full chain
+          }
+        }
       };
       loadVillages();
     } else {
@@ -104,6 +169,7 @@ export function AddressSelector({ value, onChange, disabled }: AddressSelectorPr
 
   const handleProvinceChange = (provinceId: string) => {
     const province = provinces.find(p => p.id === provinceId);
+    setInitialized(true); // User manually changed, stop auto-fill
     onChange({
       province: provinceId,
       provinceName: province?.name || '',
@@ -119,6 +185,7 @@ export function AddressSelector({ value, onChange, disabled }: AddressSelectorPr
 
   const handleCityChange = (cityId: string) => {
     const city = cities.find(c => c.id === cityId);
+    setInitialized(true);
     onChange({
       ...value,
       city: cityId,
@@ -132,6 +199,7 @@ export function AddressSelector({ value, onChange, disabled }: AddressSelectorPr
 
   const handleDistrictChange = (districtId: string) => {
     const district = districts.find(d => d.id === districtId);
+    setInitialized(true);
     onChange({
       ...value,
       district: districtId,
@@ -143,6 +211,7 @@ export function AddressSelector({ value, onChange, disabled }: AddressSelectorPr
 
   const handleVillageChange = (villageId: string) => {
     const village = villages.find(v => v.id === villageId);
+    setInitialized(true);
     onChange({
       ...value,
       village: villageId,
@@ -312,5 +381,3 @@ export function createEmptyAddressData(): AddressData {
     detail: '',
   };
 }
-
-export type { AddressData };

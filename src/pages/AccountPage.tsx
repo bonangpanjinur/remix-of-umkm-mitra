@@ -14,6 +14,15 @@ interface Profile {
   full_name: string;
   phone: string | null;
   address: string | null;
+  province_id?: string | null;
+  province_name?: string | null;
+  city_id?: string | null;
+  city_name?: string | null;
+  district_id?: string | null;
+  district_name?: string | null;
+  village_id?: string | null;
+  village_name?: string | null;
+  address_detail?: string | null;
 }
 
 export default function AccountPage() {
@@ -37,7 +46,7 @@ export default function AccountPage() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name, phone, address')
+        .select('full_name, phone, address, province_id, province_name, city_id, city_name, district_id, district_name, village_id, village_name, address_detail')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -113,6 +122,15 @@ export default function AccountPage() {
                       full_name: profile?.full_name || '',
                       phone: profile?.phone || null,
                       address: profile?.address || null,
+                      province_id: profile?.province_id,
+                      province_name: profile?.province_name,
+                      city_id: profile?.city_id,
+                      city_name: profile?.city_name,
+                      district_id: profile?.district_id,
+                      district_name: profile?.district_name,
+                      village_id: profile?.village_id,
+                      village_name: profile?.village_name,
+                      address_detail: profile?.address_detail,
                     }}
                     onSave={handleProfileSave}
                     onCancel={() => setEditing(false)}

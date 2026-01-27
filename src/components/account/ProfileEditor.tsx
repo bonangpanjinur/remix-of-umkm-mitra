@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AddressSelector, formatFullAddress, createEmptyAddressData, type AddressData } from '@/components/AddressSelector';
+import { PhoneInput } from '@/components/ui/PhoneInput';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { isValidIndonesianPhone } from '@/lib/phoneValidation';
 
 interface ProfileEditorProps {
   userId: string;
@@ -13,6 +15,15 @@ interface ProfileEditorProps {
     full_name: string;
     phone: string | null;
     address: string | null;
+    province_id?: string | null;
+    province_name?: string | null;
+    city_id?: string | null;
+    city_name?: string | null;
+    district_id?: string | null;
+    district_name?: string | null;
+    village_id?: string | null;
+    village_name?: string | null;
+    address_detail?: string | null;
   };
   onSave: (data: { full_name: string; phone: string | null; address: string | null }) => void;
   onCancel: () => void;
@@ -22,24 +33,50 @@ export function ProfileEditor({ userId, initialData, onSave, onCancel }: Profile
   const [saving, setSaving] = useState(false);
   const [fullName, setFullName] = useState(initialData.full_name || '');
   const [phone, setPhone] = useState(initialData.phone || '');
-  const [addressData, setAddressData] = useState<AddressData>(createEmptyAddressData());
-
-  // Parse existing address if available (try to extract detail part)
-  useEffect(() => {
-    if (initialData.address) {
-      // If there's existing address, put it in the detail field
-      // In a more sophisticated implementation, you could parse the address
-      setAddressData(prev => ({
-        ...prev,
-        detail: initialData.address || '',
-      }));
+  const [phoneValid, setPhoneValid] = useState(true);
+  const [addressData, setAddressData] = useState<AddressData>(() => {
+    // Initialize with stored address components if available
+    if (initialData.province_id) {
+      return {
+        province: initialData.province_id || '',
+        provinceName: initialData.province_name || '',
+        city: initialData.city_id || '',
+        cityName: initialData.city_name || '',
+        district: initialData.district_id || '',
+        districtName: initialData.district_name || '',
+        village: initialData.village_id || '',
+        villageName: initialData.village_name || '',
+        detail: initialData.address_detail || '',
+      };
     }
-  }, [initialData.address]);
+    return createEmptyAddressData();
+  });
+
+  // Initial names for auto-fill (when we have names but not IDs)
+  const initialNames = {
+    provinceName: initialData.province_name || undefined,
+    cityName: initialData.city_name || undefined,
+    districtName: initialData.district_name || undefined,
+    villageName: initialData.village_name || undefined,
+  };
+
+  const handlePhoneValidation = (isValid: boolean) => {
+    setPhoneValid(isValid || !phone); // Empty phone is valid
+  };
 
   const handleSave = async () => {
     if (!fullName.trim()) {
       toast({
         title: 'Nama lengkap wajib diisi',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (phone && !isValidIndonesianPhone(phone)) {
+      toast({
+        title: 'Format nomor telepon tidak valid',
+        description: 'Gunakan format 08xx-xxxx-xxxx',
         variant: 'destructive',
       });
       return;
@@ -58,6 +95,15 @@ export function ProfileEditor({ userId, initialData, onSave, onCancel }: Profile
           phone: phone.trim() || null,
           address: formattedAddress || null,
           village: addressData.villageName || null,
+          province_id: addressData.province || null,
+          province_name: addressData.provinceName || null,
+          city_id: addressData.city || null,
+          city_name: addressData.cityName || null,
+          district_id: addressData.district || null,
+          district_name: addressData.districtName || null,
+          village_id: addressData.village || null,
+          village_name: addressData.villageName || null,
+          address_detail: addressData.detail || null,
         })
         .eq('user_id', userId);
 
@@ -94,11 +140,11 @@ export function ProfileEditor({ userId, initialData, onSave, onCancel }: Profile
 
       <div className="space-y-2">
         <Label>No. Telepon</Label>
-        <Input
+        <PhoneInput
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="08xxxxxxxxxx"
-          type="tel"
+          onChange={setPhone}
+          onValidationChange={handlePhoneValidation}
+          disabled={saving}
         />
       </div>
 
@@ -108,6 +154,7 @@ export function ProfileEditor({ userId, initialData, onSave, onCancel }: Profile
           value={addressData}
           onChange={setAddressData}
           disabled={saving}
+          initialNames={initialNames}
         />
       </div>
 
@@ -123,7 +170,7 @@ export function ProfileEditor({ userId, initialData, onSave, onCancel }: Profile
         <Button
           onClick={handleSave}
           className="flex-1"
-          disabled={saving}
+          disabled={saving || (!phoneValid && !!phone)}
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Simpan'}
         </Button>
