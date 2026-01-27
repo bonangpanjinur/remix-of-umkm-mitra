@@ -1,7 +1,13 @@
 import { useState } from 'react';
-import { ChevronDown, ArrowUpDown, TrendingUp, Clock, DollarSign, Star } from 'lucide-react';
+import { ArrowUpDown, TrendingUp, Clock, DollarSign, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export type SortOption = 'relevance' | 'newest' | 'price_low' | 'price_high' | 'rating';
 
@@ -26,17 +32,26 @@ export function SortDropdown({ value, onChange }: SortDropdownProps) {
 
   return (
     <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "relative flex items-center justify-center w-9 h-9 rounded-xl border transition-all",
-          !isDefault
-            ? "bg-primary text-primary-foreground border-primary"
-            : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-        )}
-      >
-        <ArrowUpDown className="h-4 w-4" />
-      </button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className={cn(
+                "relative flex items-center justify-center w-9 h-9 rounded-xl border transition-all",
+                !isDefault
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+              )}
+            >
+              <ArrowUpDown className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Urutkan: {selectedOption.label}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
       <AnimatePresence>
         {isOpen && (

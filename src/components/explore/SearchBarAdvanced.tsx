@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, X, Clock, TrendingUp, ArrowUpRight } from 'lucide-react';
+import { Search, X, Clock, TrendingUp, ArrowUpRight, ShoppingBag, Store, MapPin, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { fetchAutocompleteSuggestions, AutocompleteSuggestion } from '@/lib/searchApi';
 
 interface SearchBarAdvancedProps {
   placeholder?: string;
@@ -13,6 +14,20 @@ interface SearchBarAdvancedProps {
   onHistoryClear?: () => void;
   popularSearches?: string[];
 }
+
+const typeIcons: Record<AutocompleteSuggestion['type'], React.ReactNode> = {
+  product: <ShoppingBag className="h-3.5 w-3.5 text-primary" />,
+  merchant: <Store className="h-3.5 w-3.5 text-accent-foreground" />,
+  village: <MapPin className="h-3.5 w-3.5 text-primary" />,
+  tourism: <Camera className="h-3.5 w-3.5 text-muted-foreground" />,
+};
+
+const typeLabels: Record<AutocompleteSuggestion['type'], string> = {
+  product: 'Produk',
+  merchant: 'UMKM',
+  village: 'Desa',
+  tourism: 'Wisata',
+};
 
 export function SearchBarAdvanced({ 
   placeholder = 'Cari produk, desa, atau UMKM...', 
@@ -26,8 +41,11 @@ export function SearchBarAdvanced({
 }: SearchBarAdvancedProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<AutocompleteSuggestion[]>([]);
+  const [isLoadingAutocomplete, setIsLoadingAutocomplete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -39,6 +57,31 @@ export function SearchBarAdvanced({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Fetch autocomplete suggestions with debounce
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (value.length < 2) {
+      setAutocompleteSuggestions([]);
+      return;
+    }
+
+    setIsLoadingAutocomplete(true);
+    debounceRef.current = setTimeout(async () => {
+      const suggestions = await fetchAutocompleteSuggestions(value);
+      setAutocompleteSuggestions(suggestions);
+      setIsLoadingAutocomplete(false);
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [value]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && value.trim()) {
@@ -65,10 +108,12 @@ export function SearchBarAdvanced({
 
   const handleClear = () => {
     onChange?.('');
+    setAutocompleteSuggestions([]);
     inputRef.current?.focus();
   };
 
-  const shouldShowDropdown = showSuggestions && (history.length > 0 || popularSearches.length > 0);
+  const hasAutocomplete = autocompleteSuggestions.length > 0 && value.length >= 2;
+  const shouldShowDropdown = showSuggestions && (hasAutocomplete || history.length > 0 || popularSearches.length > 0);
 
   return (
     <div ref={containerRef} className="relative flex-1">
@@ -107,8 +152,36 @@ export function SearchBarAdvanced({
             exit={{ opacity: 0, y: -10 }}
             className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden max-h-[60vh] overflow-y-auto"
           >
+            {/* Autocomplete Suggestions from Database */}
+            {hasAutocomplete && (
+              <div className="p-3 border-b border-border/50">
+                <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
+                  <Search className="h-3.5 w-3.5" />
+                  <span className="text-[10px] font-medium uppercase tracking-wide">Hasil Pencarian</span>
+                  {isLoadingAutocomplete && (
+                    <div className="ml-auto animate-spin rounded-full h-3 w-3 border border-primary border-t-transparent" />
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {autocompleteSuggestions.map((item) => (
+                    <button
+                      key={`${item.type}-${item.id}`}
+                      onClick={() => handleSuggestionClick(item.name)}
+                      className="flex items-center gap-2 w-full px-2 py-2 hover:bg-secondary rounded-lg transition group/item"
+                    >
+                      {typeIcons[item.type]}
+                      <span className="text-xs text-foreground flex-1 text-left">{item.name}</span>
+                      <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+                        {typeLabels[item.type]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Recent Searches */}
-            {history.length > 0 && (
+            {history.length > 0 && !hasAutocomplete && (
               <div className="p-3 border-b border-border/50">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -154,7 +227,7 @@ export function SearchBarAdvanced({
             )}
 
             {/* Popular Searches */}
-            {popularSearches.length > 0 && (
+            {popularSearches.length > 0 && !hasAutocomplete && (
               <div className="p-3">
                 <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
                   <TrendingUp className="h-3.5 w-3.5" />

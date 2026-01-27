@@ -3,6 +3,12 @@ import { X, SlidersHorizontal, MapPin, Banknote, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export interface FilterOptions {
   priceRange: [number, number] | null;
@@ -237,21 +243,30 @@ interface FilterButtonProps {
 
 export function FilterButton({ onClick, activeCount }: FilterButtonProps) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "relative flex items-center justify-center w-9 h-9 rounded-xl transition-all border",
-        activeCount > 0
-          ? "bg-primary text-primary-foreground border-primary"
-          : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-      )}
-    >
-      <SlidersHorizontal className="h-4 w-4" />
-      {activeCount > 0 && (
-        <span className="absolute -top-1 -right-1 bg-primary-foreground text-primary text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-medium shadow-sm">
-          {activeCount}
-        </span>
-      )}
-    </button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onClick}
+            className={cn(
+              "relative flex items-center justify-center w-9 h-9 rounded-xl transition-all border",
+              activeCount > 0
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {activeCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary-foreground text-primary text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-medium shadow-sm">
+                {activeCount}
+              </span>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          Filter
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
