@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { TicketCheck, Store, Users, TrendingUp, Wallet, Copy, Calendar, Check, X, Plus, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { TicketCheck, Store, TrendingUp, Wallet, Copy, Calendar, Check, X, Plus, Settings, ChevronRight, Users } from 'lucide-react';
 import { VerifikatorLayout } from '@/components/verifikator/VerifikatorLayout';
 import { StatsCard } from '@/components/admin/StatsCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -31,7 +32,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatPrice } from '@/lib/utils';
@@ -42,6 +42,9 @@ interface Stats {
   pendingMerchants: number;
   totalUsage: number;
   totalEarnings: number;
+  pendingEarnings: number;
+  totalKasCollected: number;
+  totalKasPending: number;
 }
 
 interface TradeGroup {
@@ -80,11 +83,15 @@ const MONTHS = [
 
 export default function VerifikatorDashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({
     totalMerchants: 0,
     pendingMerchants: 0,
     totalUsage: 0,
     totalEarnings: 0,
+    pendingEarnings: 0,
+    totalKasCollected: 0,
+    totalKasPending: 0,
   });
   const [loading, setLoading] = useState(true);
   
@@ -153,12 +160,30 @@ export default function VerifikatorDashboardPage() {
         .eq('verifikator_id', user.id);
 
       const totalEarnings = earnings?.reduce((sum, e) => sum + e.commission_amount, 0) || 0;
+      const pendingEarnings = earnings?.filter(e => e.status === 'PENDING').reduce((sum, e) => sum + e.commission_amount, 0) || 0;
+
+      // Get total kas (all time)
+      let totalKasCollected = 0;
+      let totalKasPending = 0;
+      
+      if (grp) {
+        const { data: allKas } = await supabase
+          .from('kas_payments')
+          .select('amount, status')
+          .eq('group_id', grp.id);
+
+        totalKasCollected = allKas?.filter(k => k.status === 'PAID').reduce((sum, k) => sum + k.amount, 0) || 0;
+        totalKasPending = allKas?.filter(k => k.status === 'UNPAID').reduce((sum, k) => sum + k.amount, 0) || 0;
+      }
 
       setStats({
         totalMerchants,
         pendingMerchants,
         totalUsage: code.usage_count,
         totalEarnings,
+        pendingEarnings,
+        totalKasCollected,
+        totalKasPending,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -311,6 +336,7 @@ export default function VerifikatorDashboardPage() {
       
       toast.success(`${data} tagihan kas telah dibuat untuk ${MONTHS[selectedMonth - 1]} ${selectedYear}`);
       fetchPayments();
+      fetchData(); // Refresh stats
     } catch (error: any) {
       toast.error('Gagal membuat tagihan: ' + error.message);
     }
@@ -330,6 +356,7 @@ export default function VerifikatorDashboardPage() {
       if (error) throw error;
       toast.success('Pembayaran berhasil dicatat');
       fetchPayments();
+      fetchData(); // Refresh total kas
     } catch (error: any) {
       toast.error('Gagal mencatat pembayaran');
     }
@@ -349,6 +376,7 @@ export default function VerifikatorDashboardPage() {
       if (error) throw error;
       toast.success('Status pembayaran diperbarui');
       fetchPayments();
+      fetchData(); // Refresh total kas
     } catch (error: any) {
       toast.error('Gagal memperbarui status');
     }
@@ -456,7 +484,7 @@ export default function VerifikatorDashboardPage() {
 
   const paidCount = payments.filter(p => p.status === 'PAID').length;
   const unpaidCount = payments.filter(p => p.status === 'UNPAID').length;
-  const totalCollected = payments
+  const monthlyCollected = payments
     .filter(p => p.status === 'PAID')
     .reduce((sum, p) => sum + p.amount, 0);
 
@@ -491,7 +519,7 @@ export default function VerifikatorDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Stats */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatsCard
           title="Total Anggota"
@@ -500,20 +528,52 @@ export default function VerifikatorDashboardPage() {
           description={`${stats.pendingMerchants} menunggu`}
         />
         <StatsCard
-          title="Kode Digunakan"
-          value={stats.totalUsage}
-          icon={<TicketCheck className="h-5 w-5" />}
-        />
-        <StatsCard
           title="Iuran/Bulan"
           value={formatPrice(group.monthly_fee)}
-          icon={<Wallet className="h-5 w-5" />}
+          icon={<TicketCheck className="h-5 w-5" />}
         />
-        <StatsCard
-          title="Total Komisi"
-          value={formatPrice(stats.totalEarnings)}
-          icon={<TrendingUp className="h-5 w-5" />}
-        />
+        {/* Total Kas - clickable summary */}
+        <Card 
+          className="cursor-default"
+        >
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Kas Terkumpul</p>
+                <p className="text-2xl font-bold text-primary">{formatPrice(stats.totalKasCollected)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatPrice(stats.totalKasPending)} belum terbayar
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        {/* Total Komisi - clickable to earnings */}
+        <Card 
+          className="cursor-pointer hover:shadow-md transition-shadow"
+          onClick={() => navigate('/verifikator/earnings')}
+        >
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Komisi</p>
+                <p className="text-2xl font-bold text-primary">{formatPrice(stats.totalEarnings)}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatPrice(stats.pendingEarnings)} dapat ditarik
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="h-5 w-5 text-primary" />
+              </div>
+            </div>
+            <div className="flex items-center justify-end mt-2 text-xs text-primary">
+              Lihat Detail <ChevronRight className="h-3 w-3 ml-1" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Kas Management */}
@@ -584,7 +644,7 @@ export default function VerifikatorDashboardPage() {
                     {unpaidCount} Belum Bayar
                   </span>
                 </div>
-                <span className="font-bold text-primary">{formatPrice(totalCollected)}</span>
+                <span className="font-bold text-primary">{formatPrice(monthlyCollected)}</span>
               </div>
               <Table>
                 <TableHeader>
