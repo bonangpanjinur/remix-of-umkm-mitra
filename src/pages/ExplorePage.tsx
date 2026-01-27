@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Camera, ShoppingBag, Sparkles } from 'lucide-react';
+import { MapPin, Camera, ShoppingBag } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { SearchBar } from '@/components/ui/SearchBar';
@@ -83,46 +83,23 @@ export default function ExplorePage() {
       <Header />
       
       <div className="flex-1 overflow-y-auto pb-24">
-        {/* Hero Section */}
-        <div className="bg-gradient-to-br from-primary/10 via-background to-background px-5 pt-4 pb-6">
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 mb-3"
-          >
-            <Sparkles className="h-5 w-5 text-primary" />
-            <h1 className="text-xl font-bold text-foreground">Jelajahi</h1>
-          </motion.div>
-          
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="text-sm text-muted-foreground mb-5"
-          >
-            Temukan desa wisata, destinasi menarik, dan produk UMKM lokal
-          </motion.p>
-          
-          {/* Search Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
+        {/* Search & Filter Section - Clean & Compact */}
+        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/30">
+          <div className="px-4 pt-3 pb-2">
             <SearchBar 
               placeholder="Cari desa, wisata, atau produk..." 
               value={searchQuery}
               onChange={setSearchQuery}
             />
-          </motion.div>
-        </div>
-        
-        {/* Category Tabs */}
-        <div className="px-5 py-3 border-b border-border/50">
-          <CategoryTabs 
-            activeCategory={activeCategory} 
-            onCategoryChange={setActiveCategory} 
-          />
+          </div>
+          
+          {/* Category Tabs - Compact */}
+          <div className="px-4 pb-2">
+            <CategoryTabs 
+              activeCategory={activeCategory} 
+              onCategoryChange={setActiveCategory} 
+            />
+          </div>
         </div>
         
         {loading ? (
