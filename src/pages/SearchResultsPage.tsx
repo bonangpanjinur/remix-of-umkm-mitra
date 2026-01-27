@@ -1,30 +1,34 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Camera, ShoppingBag } from 'lucide-react';
-import { Header } from '@/components/layout/Header';
+import { ArrowLeft, Search } from 'lucide-react';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { FloatingCartButton } from '@/components/layout/FloatingCartButton';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { VillageCardLarge } from '@/components/explore/VillageCardLarge';
-import { TourismCardCompact } from '@/components/explore/TourismCardCompact';
+import { ProductCard } from '@/components/ProductCard';
 import { ProductCardHorizontal } from '@/components/explore/ProductCardHorizontal';
-import { SectionHeader } from '@/components/explore/SectionHeader';
+import { TourismCardCompact } from '@/components/explore/TourismCardCompact';
+import { VillageCardLarge } from '@/components/explore/VillageCardLarge';
 import { CategoryTabs, ExploreCategory } from '@/components/explore/CategoryTabs';
 import { FilterSheet, FilterButton, FilterOptions } from '@/components/explore/FilterSheet';
 import { SortDropdown, SortOption } from '@/components/explore/SortDropdown';
+import { ViewToggle, ViewMode } from '@/components/explore/ViewToggle';
 import { EmptyState } from '@/components/explore/EmptyState';
 import { fetchVillages, fetchTourism, fetchProducts } from '@/lib/api';
 import type { Village, Tourism, Product } from '@/types';
 
-export default function ExplorePage() {
-  const navigate = useNavigate();
+export default function SearchResultsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  
   const [villages, setVillages] = useState<Village[]>([]);
   const [tourismSpots, setTourismSpots] = useState<Tourism[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [activeCategory, setActiveCategory] = useState<ExploreCategory>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortOption, setSortOption] = useState<SortOption>('relevance');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({
@@ -53,17 +57,31 @@ export default function ExplorePage() {
     loadData();
   }, []);
 
+  // Update URL when search changes
+  useEffect(() => {
+    if (searchQuery) {
+      setSearchParams({ q: searchQuery });
+    } else {
+      setSearchParams({});
+    }
+  }, [searchQuery, setSearchParams]);
+
   // Get available districts for filter
   const availableDistricts = useMemo(() => {
     const districts = new Set<string>();
     villages.forEach(v => v.district && districts.add(v.district));
+    products.forEach(p => {
+      const merchant = p.merchantName;
+      if (merchant) districts.add(merchant);
+    });
     return Array.from(districts).slice(0, 10);
-  }, [villages]);
+  }, [villages, products]);
 
   // Filter and sort data
   const filteredData = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     
+    // Filter villages
     let filteredVillages = villages.filter(v => 
       v.name.toLowerCase().includes(query) ||
       v.district?.toLowerCase().includes(query) ||
@@ -76,11 +94,13 @@ export default function ExplorePage() {
       );
     }
     
-    const filteredTourism = tourismSpots.filter(t => 
+    // Filter tourism
+    let filteredTourism = tourismSpots.filter(t => 
       t.name.toLowerCase().includes(query) ||
       t.villageName?.toLowerCase().includes(query)
     );
     
+    // Filter products
     let filteredProducts = products.filter(p => 
       p.name.toLowerCase().includes(query) ||
       p.merchantName?.toLowerCase().includes(query) ||
@@ -95,11 +115,17 @@ export default function ExplorePage() {
 
     // Sort products
     switch (sortOption) {
+      case 'newest':
+        // Default order for now since createdAt isn't in Product type
+        break;
       case 'price_low':
         filteredProducts.sort((a, b) => a.price - b.price);
         break;
       case 'price_high':
         filteredProducts.sort((a, b) => b.price - a.price);
+        break;
+      case 'rating':
+        // Default order for now since rating isn't in Product type
         break;
     }
 
@@ -119,65 +145,77 @@ export default function ExplorePage() {
     (showTourism && filteredData.tourism.length > 0) ||
     (showProducts && filteredData.products.length > 0);
 
+  const totalResults = 
+    (showVillages ? filteredData.villages.length : 0) +
+    (showTourism ? filteredData.tourism.length : 0) +
+    (showProducts ? filteredData.products.length : 0);
+
   const activeFilterCount = 
     (filters.priceRange ? 1 : 0) + 
     (filters.districts.length > 0 ? 1 : 0) + 
     (filters.minRating ? 1 : 0);
 
-  const handleSearchSubmit = () => {
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
-
   return (
     <div className="mobile-shell bg-background flex flex-col min-h-screen">
-      <Header />
-      
-      <div className="flex-1 overflow-y-auto pb-24">
-        {/* Search & Filter Section */}
-        <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b border-border/30">
-          <div className="px-4 pt-3 pb-2">
+      {/* Header */}
+      <header className="bg-card sticky top-0 z-40 shadow-sm px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Link to="/explore" className="p-2 -ml-2 hover:bg-secondary rounded-full transition">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="flex-1">
             <SearchBar 
-              placeholder="Cari desa, wisata, atau produk..." 
+              placeholder="Cari produk, wisata, desa..." 
               value={searchQuery}
               onChange={setSearchQuery}
-              onSubmit={handleSearchSubmit}
             />
           </div>
-          
-          {/* Category Tabs + Filter Controls */}
-          <div className="px-4 pb-2 flex items-center justify-between gap-2">
-            <div className="flex-1 overflow-hidden">
-              <CategoryTabs 
-                activeCategory={activeCategory} 
-                onCategoryChange={setActiveCategory} 
-              />
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <FilterButton onClick={() => setIsFilterOpen(true)} activeCount={activeFilterCount} />
-              <SortDropdown value={sortOption} onChange={setSortOption} />
-            </div>
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-y-auto pb-24">
+        {/* Category Tabs */}
+        <div className="px-4 py-3 border-b border-border/30">
+          <CategoryTabs 
+            activeCategory={activeCategory} 
+            onCategoryChange={setActiveCategory} 
+          />
+        </div>
+
+        {/* Filter, Sort, View Controls */}
+        <div className="px-4 py-3 flex items-center justify-between border-b border-border/30 bg-background/95 backdrop-blur sticky top-[60px] z-30">
+          <div className="flex items-center gap-2">
+            <FilterButton onClick={() => setIsFilterOpen(true)} activeCount={activeFilterCount} />
+            <SortDropdown value={sortOption} onChange={setSortOption} />
+          </div>
+          <div className="flex items-center gap-3">
+            {totalResults > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {totalResults} hasil
+              </span>
+            )}
+            <ViewToggle value={viewMode} onChange={setViewMode} />
           </div>
         </div>
-        
+
+        {/* Results */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-4" />
-            <p className="text-muted-foreground text-sm">Memuat data...</p>
+            <p className="text-muted-foreground text-sm">Mencari...</p>
           </div>
         ) : !hasResults ? (
           <EmptyState 
-            title={searchQuery ? "Tidak ditemukan" : "Belum ada data"}
+            title={searchQuery ? "Tidak ditemukan" : "Ketik untuk mencari"}
             description={searchQuery 
               ? `Tidak ada hasil untuk "${searchQuery}"`
-              : "Data belum tersedia saat ini"
+              : "Cari produk, wisata, atau desa wisata"
             }
           />
         ) : (
           <AnimatePresence mode="wait">
             <motion.div 
-              key={activeCategory + searchQuery}
+              key={activeCategory + searchQuery + viewMode}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -185,63 +223,57 @@ export default function ExplorePage() {
             >
               {/* Villages Section */}
               {showVillages && filteredData.villages.length > 0 && (
-                <motion.section
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <SectionHeader 
-                    title="Desa Wisata"
-                    subtitle={`${filteredData.villages.length} desa tersedia`}
-                    icon={<MapPin className="h-4 w-4" />}
-                  />
+                <section>
+                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">
+                    Desa ({filteredData.villages.length})
+                  </h3>
                   <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2 -mx-4 px-4">
                     {filteredData.villages.map((village, idx) => (
                       <VillageCardLarge key={village.id} village={village} index={idx} />
                     ))}
                   </div>
-                </motion.section>
+                </section>
               )}
-              
+
               {/* Tourism Section */}
               {showTourism && filteredData.tourism.length > 0 && (
-                <motion.section
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  <SectionHeader 
-                    title="Destinasi Wisata"
-                    subtitle={`${filteredData.tourism.length} tempat wisata`}
-                    href="/tourism"
-                    icon={<Camera className="h-4 w-4" />}
-                  />
+                <section>
+                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">
+                    Wisata ({filteredData.tourism.length})
+                  </h3>
                   <div className="space-y-3">
-                    {filteredData.tourism.slice(0, activeCategory === 'tourism' ? undefined : 3).map((tourism, idx) => (
+                    {filteredData.tourism.map((tourism, idx) => (
                       <TourismCardCompact key={tourism.id} tourism={tourism} index={idx} />
                     ))}
                   </div>
-                </motion.section>
+                </section>
               )}
-              
+
               {/* Products Section */}
               {showProducts && filteredData.products.length > 0 && (
-                <motion.section
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <SectionHeader 
-                    title="Produk Pilihan"
-                    subtitle={`${filteredData.products.length} produk UMKM`}
-                    href="/products"
-                    icon={<ShoppingBag className="h-4 w-4" />}
-                  />
-                  <div className="space-y-3">
-                    {filteredData.products.slice(0, activeCategory === 'products' ? undefined : 4).map((product, idx) => (
-                      <ProductCardHorizontal key={product.id} product={product} index={idx} />
-                    ))}
-                  </div>
-                </motion.section>
+                <section>
+                  <h3 className="font-semibold text-sm text-muted-foreground mb-3">
+                    Produk ({filteredData.products.length})
+                  </h3>
+                  {viewMode === 'grid' ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {filteredData.products.map((product, idx) => (
+                        <ProductCard 
+                          key={product.id} 
+                          product={product} 
+                          index={idx}
+                          showCategoryBadge 
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {filteredData.products.map((product, idx) => (
+                        <ProductCardHorizontal key={product.id} product={product} index={idx} />
+                      ))}
+                    </div>
+                  )}
+                </section>
               )}
             </motion.div>
           </AnimatePresence>
