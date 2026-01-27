@@ -86,6 +86,17 @@ export interface ShippingZonesSettings {
   zones: ShippingZone[];
 }
 
+export interface CODSettings {
+  enabled: boolean;
+  max_amount: number;
+  max_distance_km: number;
+  service_fee: number;
+  min_trust_score: number;
+  confirmation_timeout_minutes: number;
+  penalty_points: number;
+  success_bonus_points: number;
+}
+
 export interface AdminStats {
   totalMerchants: number;
   pendingMerchants: number;

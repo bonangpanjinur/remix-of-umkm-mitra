@@ -10,6 +10,10 @@ interface CODSettings {
   maxDistanceKm: number;
   serviceFee: number;
   confirmationTimeoutMinutes: number;
+  minTrustScore: number;
+  penaltyPoints: number;
+  successBonusPoints: number;
+  enabled: boolean;
 }
 
 const DEFAULT_COD_SETTINGS: CODSettings = {
@@ -17,7 +21,66 @@ const DEFAULT_COD_SETTINGS: CODSettings = {
   maxDistanceKm: 3,
   serviceFee: 1000,
   confirmationTimeoutMinutes: 15,
+  minTrustScore: 50,
+  penaltyPoints: 50,
+  successBonusPoints: 1,
+  enabled: true,
 };
+
+// Cache for COD settings
+let cachedSettings: CODSettings | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Fetch COD settings from database with caching
+ */
+export async function fetchCODSettings(): Promise<CODSettings> {
+  const now = Date.now();
+  
+  // Return cached settings if still valid
+  if (cachedSettings && (now - cacheTimestamp) < CACHE_TTL) {
+    return cachedSettings;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'cod_settings')
+      .maybeSingle();
+
+    if (error || !data) {
+      return DEFAULT_COD_SETTINGS;
+    }
+
+    const dbSettings = data.value as Record<string, unknown>;
+    cachedSettings = {
+      maxAmount: (dbSettings.max_amount as number) || DEFAULT_COD_SETTINGS.maxAmount,
+      maxDistanceKm: (dbSettings.max_distance_km as number) || DEFAULT_COD_SETTINGS.maxDistanceKm,
+      serviceFee: (dbSettings.service_fee as number) || DEFAULT_COD_SETTINGS.serviceFee,
+      confirmationTimeoutMinutes: (dbSettings.confirmation_timeout_minutes as number) || DEFAULT_COD_SETTINGS.confirmationTimeoutMinutes,
+      minTrustScore: (dbSettings.min_trust_score as number) || DEFAULT_COD_SETTINGS.minTrustScore,
+      penaltyPoints: (dbSettings.penalty_points as number) || DEFAULT_COD_SETTINGS.penaltyPoints,
+      successBonusPoints: (dbSettings.success_bonus_points as number) || DEFAULT_COD_SETTINGS.successBonusPoints,
+      enabled: (dbSettings.enabled as boolean) ?? DEFAULT_COD_SETTINGS.enabled,
+    };
+    cacheTimestamp = now;
+
+    return cachedSettings;
+  } catch (error) {
+    console.error('Error fetching COD settings:', error);
+    return DEFAULT_COD_SETTINGS;
+  }
+}
+
+/**
+ * Clear COD settings cache (call when settings are updated)
+ */
+export function clearCODSettingsCache(): void {
+  cachedSettings = null;
+  cacheTimestamp = 0;
+}
 
 /**
  * Calculate distance between two coordinates using Haversine formula
@@ -158,6 +221,9 @@ export async function updateBuyerTrustScore(
   success: boolean
 ): Promise<void> {
   try {
+    // Fetch settings for penalty/bonus points
+    const settings = await fetchCODSettings();
+    
     const { data: profile } = await supabase
       .from('profiles')
       .select('trust_score, cod_fail_count')
@@ -166,19 +232,19 @@ export async function updateBuyerTrustScore(
 
     if (!profile) return;
 
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
 
     if (success) {
-      // Successful COD: +1 point (max 100)
-      updates.trust_score = Math.min(100, (profile.trust_score || 100) + 1);
+      // Successful COD: +bonus points (max 100)
+      updates.trust_score = Math.min(100, (profile.trust_score || 100) + settings.successBonusPoints);
     } else {
-      // Failed COD: -50 points
-      const newScore = Math.max(0, (profile.trust_score || 100) - 50);
+      // Failed COD: -penalty points
+      const newScore = Math.max(0, (profile.trust_score || 100) - settings.penaltyPoints);
       updates.trust_score = newScore;
       updates.cod_fail_count = (profile.cod_fail_count || 0) + 1;
       
-      // Disable COD if score drops below 50
-      if (newScore < 50) {
+      // Disable COD if score drops below minimum
+      if (newScore < settings.minTrustScore) {
         updates.cod_enabled = false;
       }
     }
