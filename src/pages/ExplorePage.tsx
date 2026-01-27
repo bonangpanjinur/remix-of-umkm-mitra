@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Camera, ShoppingBag, Sparkles } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
-import { VillageCard } from '@/components/VillageCard';
-import { TourismCard } from '@/components/TourismCard';
-import { ProductCard } from '@/components/ProductCard';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { VillageCardLarge } from '@/components/explore/VillageCardLarge';
+import { TourismCardCompact } from '@/components/explore/TourismCardCompact';
+import { ProductCardHorizontal } from '@/components/explore/ProductCardHorizontal';
+import { SectionHeader } from '@/components/explore/SectionHeader';
+import { CategoryTabs, ExploreCategory } from '@/components/explore/CategoryTabs';
+import { EmptyState } from '@/components/explore/EmptyState';
 import { fetchVillages, fetchTourism, fetchProducts } from '@/lib/api';
 import type { Village, Tourism, Product } from '@/types';
 
@@ -13,6 +18,8 @@ export default function ExplorePage() {
   const [tourismSpots, setTourismSpots] = useState<Tourism[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<ExploreCategory>('all');
 
   useEffect(() => {
     async function loadData() {
@@ -34,65 +41,175 @@ export default function ExplorePage() {
     loadData();
   }, []);
 
+  // Filter data based on search query
+  const filteredData = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    
+    const filteredVillages = villages.filter(v => 
+      v.name.toLowerCase().includes(query) ||
+      v.district?.toLowerCase().includes(query) ||
+      v.regency?.toLowerCase().includes(query)
+    );
+    
+    const filteredTourism = tourismSpots.filter(t => 
+      t.name.toLowerCase().includes(query) ||
+      t.villageName?.toLowerCase().includes(query)
+    );
+    
+    const filteredProducts = products.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      p.merchantName?.toLowerCase().includes(query) ||
+      p.category?.toLowerCase().includes(query)
+    );
+
+    return { 
+      villages: filteredVillages, 
+      tourism: filteredTourism, 
+      products: filteredProducts 
+    };
+  }, [villages, tourismSpots, products, searchQuery]);
+
+  const showVillages = activeCategory === 'all' || activeCategory === 'villages';
+  const showTourism = activeCategory === 'all' || activeCategory === 'tourism';
+  const showProducts = activeCategory === 'all' || activeCategory === 'products';
+
+  const hasResults = 
+    (showVillages && filteredData.villages.length > 0) ||
+    (showTourism && filteredData.tourism.length > 0) ||
+    (showProducts && filteredData.products.length > 0);
+
   return (
     <div className="mobile-shell bg-background flex flex-col min-h-screen">
       <Header />
       
       <div className="flex-1 overflow-y-auto pb-24">
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="px-5 py-4"
-        >
-          <h1 className="text-xl font-bold text-foreground mb-1">Jelajahi</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            Temukan desa, wisata, dan produk UMKM
-          </p>
+        {/* Hero Section */}
+        <div className="bg-gradient-to-br from-primary/10 via-background to-background px-5 pt-4 pb-6">
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 mb-3"
+          >
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h1 className="text-xl font-bold text-foreground">Jelajahi</h1>
+          </motion.div>
           
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-          ) : (
-            <>
-              {/* Villages */}
-              {villages.length > 0 && (
-                <section className="mb-6">
-                  <h2 className="font-bold text-sm text-foreground mb-3">Desa Wisata</h2>
-                  <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
-                    {villages.map(village => (
-                      <VillageCard key={village.id} village={village} />
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="text-sm text-muted-foreground mb-5"
+          >
+            Temukan desa wisata, destinasi menarik, dan produk UMKM lokal
+          </motion.p>
+          
+          {/* Search Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+          >
+            <SearchBar 
+              placeholder="Cari desa, wisata, atau produk..." 
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
+          </motion.div>
+        </div>
+        
+        {/* Category Tabs */}
+        <div className="px-5 py-3 border-b border-border/50">
+          <CategoryTabs 
+            activeCategory={activeCategory} 
+            onCategoryChange={setActiveCategory} 
+          />
+        </div>
+        
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-4" />
+            <p className="text-muted-foreground text-sm">Memuat data...</p>
+          </div>
+        ) : !hasResults ? (
+          <EmptyState 
+            title={searchQuery ? "Tidak ditemukan" : "Belum ada data"}
+            description={searchQuery 
+              ? `Tidak ada hasil untuk "${searchQuery}"`
+              : "Data belum tersedia saat ini"
+            }
+          />
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={activeCategory + searchQuery}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="px-5 py-4 space-y-6"
+            >
+              {/* Villages Section */}
+              {showVillages && filteredData.villages.length > 0 && (
+                <motion.section
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <SectionHeader 
+                    title="Desa Wisata"
+                    subtitle={`${filteredData.villages.length} desa tersedia`}
+                    icon={<MapPin className="h-4 w-4" />}
+                  />
+                  <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2 -mx-5 px-5">
+                    {filteredData.villages.map((village, idx) => (
+                      <VillageCardLarge key={village.id} village={village} index={idx} />
                     ))}
                   </div>
-                </section>
+                </motion.section>
               )}
               
-              {/* Tourism */}
-              {tourismSpots.length > 0 && (
-                <section className="mb-6">
-                  <h2 className="font-bold text-sm text-foreground mb-3">Destinasi Wisata</h2>
+              {/* Tourism Section */}
+              {showTourism && filteredData.tourism.length > 0 && (
+                <motion.section
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <SectionHeader 
+                    title="Destinasi Wisata"
+                    subtitle={`${filteredData.tourism.length} tempat wisata`}
+                    href="/tourism"
+                    icon={<Camera className="h-4 w-4" />}
+                  />
                   <div className="space-y-3">
-                    {tourismSpots.map((tourism, idx) => (
-                      <TourismCard key={tourism.id} tourism={tourism} index={idx} />
+                    {filteredData.tourism.slice(0, activeCategory === 'tourism' ? undefined : 3).map((tourism, idx) => (
+                      <TourismCardCompact key={tourism.id} tourism={tourism} index={idx} />
                     ))}
                   </div>
-                </section>
+                </motion.section>
               )}
               
-              {/* Products */}
-              {products.length > 0 && (
-                <section>
-                  <h2 className="font-bold text-sm text-foreground mb-3">Produk Pilihan</h2>
-                  <div className="grid grid-cols-2 gap-3">
-                    {products.slice(0, 4).map((product, idx) => (
-                      <ProductCard key={product.id} product={product} index={idx} />
+              {/* Products Section */}
+              {showProducts && filteredData.products.length > 0 && (
+                <motion.section
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <SectionHeader 
+                    title="Produk Pilihan"
+                    subtitle={`${filteredData.products.length} produk UMKM`}
+                    href="/products"
+                    icon={<ShoppingBag className="h-4 w-4" />}
+                  />
+                  <div className="space-y-3">
+                    {filteredData.products.slice(0, activeCategory === 'products' ? undefined : 4).map((product, idx) => (
+                      <ProductCardHorizontal key={product.id} product={product} index={idx} />
                     ))}
                   </div>
-                </section>
+                </motion.section>
               )}
-            </>
-          )}
-        </motion.div>
+            </motion.div>
+          </AnimatePresence>
+        )}
       </div>
       
       <BottomNav />
