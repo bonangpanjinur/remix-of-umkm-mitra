@@ -30,9 +30,10 @@ interface AdminSidebarProps {
   pendingCouriers?: number;
   pendingOrders?: number;
   pendingRefunds?: number;
+  pendingWithdrawals?: number;
 }
 
-export function AdminSidebar({ pendingMerchants = 0, pendingVillages = 0, pendingCouriers = 0, pendingOrders = 0, pendingRefunds = 0 }: AdminSidebarProps) {
+export function AdminSidebar({ pendingMerchants = 0, pendingVillages = 0, pendingCouriers = 0, pendingOrders = 0, pendingRefunds = 0, pendingWithdrawals = 0 }: AdminSidebarProps) {
   const location = useLocation();
 
   const menuItems: SidebarItem[] = [
@@ -42,6 +43,7 @@ export function AdminSidebar({ pendingMerchants = 0, pendingVillages = 0, pendin
     { label: 'Merchant', href: '/admin/merchants', icon: <Store className="h-4 w-4" />, badge: pendingMerchants },
     { label: 'Desa Wisata', href: '/admin/villages', icon: <MapPin className="h-4 w-4" />, badge: pendingVillages },
     { label: 'Kurir', href: '/admin/couriers', icon: <Bike className="h-4 w-4" />, badge: pendingCouriers },
+    { label: 'Penarikan', href: '/admin/withdrawals', icon: <RotateCcw className="h-4 w-4" />, badge: pendingWithdrawals },
     { label: 'Refund', href: '/admin/refunds', icon: <RotateCcw className="h-4 w-4" />, badge: pendingRefunds },
     { label: 'Laporan', href: '/admin/reports', icon: <FileText className="h-4 w-4" /> },
     { label: 'Promosi', href: '/admin/promotions', icon: <Megaphone className="h-4 w-4" /> },

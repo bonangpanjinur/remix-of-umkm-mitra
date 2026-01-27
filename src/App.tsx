@@ -42,6 +42,7 @@ import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminReportsPage from "./pages/admin/AdminReportsPage";
 import AdminRefundsPage from "./pages/admin/AdminRefundsPage";
 import AdminLogsPage from "./pages/admin/AdminLogsPage";
+import AdminWithdrawalsPage from "./pages/admin/AdminWithdrawalsPage";
 
 // Verifikator Pages
 import VerifikatorDashboardPage from "./pages/verifikator/VerifikatorDashboardPage";
@@ -61,7 +62,9 @@ import MerchantWithdrawalPage from "./pages/merchant/MerchantWithdrawalPage";
 // Desa Pages
 import DesaDashboardPage from "./pages/desa/DesaDashboardPage";
 import DesaTourismPage from "./pages/desa/DesaTourismPage";
-import DesaMerchantsPage from "./pages/desa/DesaMerchantsPage";
+
+// Notifications
+import NotificationsPage from "./pages/NotificationsPage";
 
 const queryClient = new QueryClient();
 
@@ -184,8 +187,13 @@ const App = () => (
                   <AdminLogsPage />
                 </ProtectedRoute>
               } />
+              <Route path="/admin/withdrawals" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminWithdrawalsPage />
+                </ProtectedRoute>
+              } />
 
-              {/* Verifikator routes */}
+              {/* Verifikator routes - only merchants, no couriers */}
               <Route path="/verifikator" element={
                 <ProtectedRoute allowedRoles={['verifikator', 'admin']}>
                   <VerifikatorDashboardPage />
@@ -244,7 +252,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
 
-              {/* Admin Desa routes */}
+              {/* Admin Desa routes - only tourism, no merchants */}
               <Route path="/desa" element={
                 <ProtectedRoute allowedRoles={['admin_desa', 'admin']}>
                   <DesaDashboardPage />
@@ -255,9 +263,11 @@ const App = () => (
                   <DesaTourismPage />
                 </ProtectedRoute>
               } />
-              <Route path="/desa/merchants" element={
-                <ProtectedRoute allowedRoles={['admin_desa', 'admin']}>
-                  <DesaMerchantsPage />
+
+              {/* Notifications */}
+              <Route path="/notifications" element={
+                <ProtectedRoute>
+                  <NotificationsPage />
                 </ProtectedRoute>
               } />
 

@@ -1,10 +1,8 @@
 import { Link } from 'react-router-dom';
-import { Bell, Leaf } from 'lucide-react';
+import { Leaf } from 'lucide-react';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 
 export function Header() {
-  // TODO: Implement notification count from backend
-  const notificationCount = 0;
-
   return (
     <header className="bg-card sticky top-0 z-40 shadow-md px-5 py-3">
       <div className="flex items-center justify-between">
@@ -22,19 +20,7 @@ export function Header() {
           </div>
         </Link>
         
-        <button 
-          className="relative cursor-pointer hover:scale-105 transition"
-          aria-label="Notifications"
-        >
-          <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center text-secondary-foreground border border-border">
-            <Bell className="h-4 w-4" />
-          </div>
-          {notificationCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full border-2 border-card text-[8px] flex items-center justify-center text-destructive-foreground font-bold">
-              {notificationCount > 9 ? '9+' : notificationCount}
-            </span>
-          )}
-        </button>
+        <NotificationDropdown />
       </div>
     </header>
   );

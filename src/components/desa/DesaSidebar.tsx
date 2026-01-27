@@ -18,10 +18,10 @@ interface SidebarItem {
 export function DesaSidebar() {
   const location = useLocation();
 
+  // Admin Desa hanya mengelola wisata saja
   const menuItems: SidebarItem[] = [
     { label: 'Dashboard', href: '/desa', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Wisata', href: '/desa/tourism', icon: <Mountain className="h-4 w-4" /> },
-    { label: 'Merchant', href: '/desa/merchants', icon: <Store className="h-4 w-4" /> },
   ];
 
   return (

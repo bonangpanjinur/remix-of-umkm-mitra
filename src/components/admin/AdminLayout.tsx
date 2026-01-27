@@ -15,6 +15,7 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
   const [pendingMerchants, setPendingMerchants] = useState(0);
   const [pendingVillages, setPendingVillages] = useState(0);
   const [pendingCouriers, setPendingCouriers] = useState(0);
+  const [pendingWithdrawals, setPendingWithdrawals] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -24,6 +25,12 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
         setPendingMerchants(stats.pendingMerchants);
         setPendingVillages(stats.pendingVillages);
         setPendingCouriers(stats.pendingCouriers);
+        
+        // Fetch pending withdrawals count
+        const { count } = await import('@/integrations/supabase/client').then(m => 
+          m.supabase.from('withdrawal_requests').select('*', { count: 'exact', head: true }).eq('status', 'PENDING')
+        );
+        setPendingWithdrawals(count || 0);
       } catch (error) {
         console.error('Error loading stats:', error);
       }
@@ -52,6 +59,7 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
           pendingMerchants={pendingMerchants}
           pendingVillages={pendingVillages}
           pendingCouriers={pendingCouriers}
+          pendingWithdrawals={pendingWithdrawals}
         />
       </div>
 

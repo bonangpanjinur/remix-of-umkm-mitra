@@ -145,7 +145,8 @@ export default function DesaDashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Quick Actions - Only Tourism for Admin Desa */}
+      <div className="grid grid-cols-1 gap-4">
         <Button 
           variant="outline" 
           className="h-auto py-4 flex flex-col items-center gap-2"
@@ -153,14 +154,6 @@ export default function DesaDashboardPage() {
         >
           <Mountain className="h-6 w-6" />
           <span>Kelola Wisata</span>
-        </Button>
-        <Button 
-          variant="outline" 
-          className="h-auto py-4 flex flex-col items-center gap-2"
-          onClick={() => navigate('/desa/merchants')}
-        >
-          <Store className="h-6 w-6" />
-          <span>Lihat Merchant</span>
         </Button>
       </div>
     </DesaLayout>
