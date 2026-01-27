@@ -22,15 +22,20 @@ export function SortDropdown({ value, onChange }: SortDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const selectedOption = sortOptions.find(o => o.value === value) || sortOptions[0];
 
+  const isDefault = value === 'relevance';
+
   return (
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-background border border-border hover:border-primary/50 transition-all"
+        className={cn(
+          "relative flex items-center justify-center w-9 h-9 rounded-xl border transition-all",
+          !isDefault
+            ? "bg-primary text-primary-foreground border-primary"
+            : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+        )}
       >
-        <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-foreground">{selectedOption.label}</span>
-        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+        <ArrowUpDown className="h-4 w-4" />
       </button>
 
       <AnimatePresence>

@@ -240,16 +240,15 @@ export function FilterButton({ onClick, activeCount }: FilterButtonProps) {
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all border",
+        "relative flex items-center justify-center w-9 h-9 rounded-xl transition-all border",
         activeCount > 0
           ? "bg-primary text-primary-foreground border-primary"
-          : "bg-background text-muted-foreground border-border hover:border-primary/50"
+          : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
       )}
     >
-      <SlidersHorizontal className="h-3.5 w-3.5" />
-      Filter
+      <SlidersHorizontal className="h-4 w-4" />
       {activeCount > 0 && (
-        <span className="bg-primary-foreground text-primary text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+        <span className="absolute -top-1 -right-1 bg-primary-foreground text-primary text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-medium shadow-sm">
           {activeCount}
         </span>
       )}
