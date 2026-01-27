@@ -171,6 +171,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "courier_earnings_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "public_couriers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "courier_earnings_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -320,6 +327,13 @@ export type Database = {
             referencedRelation: "merchants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "group_members_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       insurance_fund: {
@@ -368,6 +382,13 @@ export type Database = {
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insurance_fund_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
             referencedColumns: ["id"]
           },
           {
@@ -437,6 +458,13 @@ export type Database = {
             referencedRelation: "merchants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "kas_payments_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
+            referencedColumns: ["id"]
+          },
         ]
       }
       merchant_subscriptions: {
@@ -491,6 +519,13 @@ export type Database = {
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_subscriptions_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
             referencedColumns: ["id"]
           },
           {
@@ -861,10 +896,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "orders_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "public_couriers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_merchant_id_fkey"
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
             referencedColumns: ["id"]
           },
         ]
@@ -921,6 +970,13 @@ export type Database = {
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_fees_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
             referencedColumns: ["id"]
           },
           {
@@ -996,6 +1052,13 @@ export type Database = {
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
             referencedColumns: ["id"]
           },
         ]
@@ -1264,6 +1327,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reviews_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reviews_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -1524,6 +1594,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "verifikator_earnings_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "verifikator_earnings_package_id_fkey"
             columns: ["package_id"]
             isOneToOne: false
@@ -1724,11 +1801,118 @@ export type Database = {
             referencedRelation: "merchants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "withdrawal_requests_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      public_couriers: {
+        Row: {
+          current_lat: number | null
+          current_lng: number | null
+          first_name: string | null
+          id: string | null
+          is_available: boolean | null
+          last_location_update: string | null
+          name: string | null
+          photo_url: string | null
+          status: string | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          current_lat?: number | null
+          current_lng?: number | null
+          first_name?: never
+          id?: string | null
+          is_available?: boolean | null
+          last_location_update?: string | null
+          name?: string | null
+          photo_url?: string | null
+          status?: string | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          current_lat?: number | null
+          current_lng?: number | null
+          first_name?: never
+          id?: string | null
+          is_available?: boolean | null
+          last_location_update?: string | null
+          name?: string | null
+          photo_url?: string | null
+          status?: string | null
+          vehicle_type?: string | null
+        }
+        Relationships: []
+      }
+      public_merchants: {
+        Row: {
+          badge: string | null
+          business_category: string | null
+          business_description: string | null
+          city: string | null
+          classification_price: string | null
+          close_time: string | null
+          id: string | null
+          image_url: string | null
+          is_open: boolean | null
+          name: string | null
+          open_time: string | null
+          province: string | null
+          rating_avg: number | null
+          rating_count: number | null
+          village_id: string | null
+        }
+        Insert: {
+          badge?: string | null
+          business_category?: string | null
+          business_description?: string | null
+          city?: string | null
+          classification_price?: string | null
+          close_time?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_open?: boolean | null
+          name?: string | null
+          open_time?: string | null
+          province?: string | null
+          rating_avg?: number | null
+          rating_count?: number | null
+          village_id?: string | null
+        }
+        Update: {
+          badge?: string | null
+          business_category?: string | null
+          business_description?: string | null
+          city?: string | null
+          classification_price?: string | null
+          close_time?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_open?: boolean | null
+          name?: string | null
+          open_time?: string | null
+          province?: string | null
+          rating_avg?: number | null
+          rating_count?: number | null
+          village_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchants_village_id_fkey"
+            columns: ["village_id"]
+            isOneToOne: false
+            referencedRelation: "villages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       auto_cancel_pending_orders: { Args: never; Returns: undefined }
