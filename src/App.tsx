@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // Pages
 import Index from "./pages/Index";
@@ -26,6 +27,7 @@ import RegisterCourierPage from "./pages/RegisterCourierPage";
 import NotFound from "./pages/NotFound";
 import CourierDashboardPage from "./pages/CourierDashboardPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
+import UnauthorizedPage from "./pages/UnauthorizedPage";
 
 // Admin Pages
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -42,27 +44,92 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Public routes */}
               <Route path="/" element={<Index />} />
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/tourism" element={<TourismPage />} />
               <Route path="/tourism/:id" element={<TourismDetail />} />
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/explore" element={<ExplorePage />} />
               <Route path="/search" element={<SearchResultsPage />} />
-              <Route path="/orders" element={<OrdersPage />} />
-              <Route path="/account" element={<AccountPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/register/village" element={<RegisterVillagePage />} />
               <Route path="/register/merchant" element={<RegisterMerchantPage />} />
               <Route path="/register/courier" element={<RegisterCourierPage />} />
-              <Route path="/courier" element={<CourierDashboardPage />} />
-              <Route path="/orders/:orderId/tracking" element={<OrderTrackingPage />} />
-              {/* Admin Routes */}
-              <Route path="/admin" element={<AdminDashboardPage />} />
-              <Route path="/admin/settings" element={<AdminSettingsPage />} />
+              <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+              {/* Protected buyer routes */}
+              <Route path="/cart" element={
+                <ProtectedRoute>
+                  <CartPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/checkout" element={
+                <ProtectedRoute>
+                  <CheckoutPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/orders" element={
+                <ProtectedRoute>
+                  <OrdersPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/orders/:orderId/tracking" element={
+                <ProtectedRoute>
+                  <OrderTrackingPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/account" element={
+                <ProtectedRoute>
+                  <AccountPage />
+                </ProtectedRoute>
+              } />
+
+              {/* Courier routes */}
+              <Route path="/courier" element={
+                <ProtectedRoute allowedRoles={['courier', 'admin']}>
+                  <CourierDashboardPage />
+                </ProtectedRoute>
+              } />
+
+              {/* Admin routes */}
+              <Route path="/admin" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/settings" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminSettingsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/merchants" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/villages" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/couriers" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/promotions" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/codes" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              } />
+
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
