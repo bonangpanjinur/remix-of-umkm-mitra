@@ -426,6 +426,7 @@ export type Database = {
           created_at: string
           current_subscription_id: string | null
           district: string | null
+          group_id: string | null
           id: string
           image_url: string | null
           is_open: boolean
@@ -466,6 +467,7 @@ export type Database = {
           created_at?: string
           current_subscription_id?: string | null
           district?: string | null
+          group_id?: string | null
           id?: string
           image_url?: string | null
           is_open?: boolean
@@ -506,6 +508,7 @@ export type Database = {
           created_at?: string
           current_subscription_id?: string | null
           district?: string | null
+          group_id?: string | null
           id?: string
           image_url?: string | null
           is_open?: boolean
@@ -536,6 +539,13 @@ export type Database = {
             columns: ["current_subscription_id"]
             isOneToOne: false
             referencedRelation: "merchant_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchants_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "trade_groups"
             referencedColumns: ["id"]
           },
           {
@@ -1209,9 +1219,9 @@ export type Database = {
           classification_price: string
           created_at: string
           description: string | null
+          group_commission_percent: number
           id: string
           is_active: boolean
-          kas_fee: number
           name: string
           price_per_transaction: number
           transaction_quota: number
@@ -1222,9 +1232,9 @@ export type Database = {
           classification_price: string
           created_at?: string
           description?: string | null
+          group_commission_percent?: number
           id?: string
           is_active?: boolean
-          kas_fee?: number
           name: string
           price_per_transaction?: number
           transaction_quota?: number
@@ -1235,9 +1245,9 @@ export type Database = {
           classification_price?: string
           created_at?: string
           description?: string | null
+          group_commission_percent?: number
           id?: string
           is_active?: boolean
-          kas_fee?: number
           name?: string
           price_per_transaction?: number
           transaction_quota?: number
@@ -1299,6 +1309,70 @@ export type Database = {
           verifikator_id?: string
         }
         Relationships: []
+      }
+      verifikator_earnings: {
+        Row: {
+          commission_amount: number
+          commission_percent: number
+          created_at: string
+          id: string
+          merchant_id: string
+          package_amount: number
+          package_id: string
+          paid_at: string | null
+          status: string
+          subscription_id: string
+          verifikator_id: string
+        }
+        Insert: {
+          commission_amount: number
+          commission_percent: number
+          created_at?: string
+          id?: string
+          merchant_id: string
+          package_amount: number
+          package_id: string
+          paid_at?: string | null
+          status?: string
+          subscription_id: string
+          verifikator_id: string
+        }
+        Update: {
+          commission_amount?: number
+          commission_percent?: number
+          created_at?: string
+          id?: string
+          merchant_id?: string
+          package_amount?: number
+          package_id?: string
+          paid_at?: string | null
+          status?: string
+          subscription_id?: string
+          verifikator_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verifikator_earnings_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verifikator_earnings_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verifikator_earnings_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       villages: {
         Row: {

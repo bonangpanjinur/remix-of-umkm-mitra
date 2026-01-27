@@ -37,7 +37,7 @@ interface TransactionPackage {
   name: string;
   classification_price: string;
   price_per_transaction: number;
-  kas_fee: number;
+  group_commission_percent: number;
   transaction_quota: number;
   validity_days: number;
   description: string | null;
@@ -60,7 +60,7 @@ export default function AdminPackagesPage() {
     name: '',
     classification_price: 'UNDER_5K',
     price_per_transaction: 500,
-    kas_fee: 1000,
+    group_commission_percent: 5,
     transaction_quota: 50,
     validity_days: 30,
     description: '',
@@ -140,7 +140,7 @@ export default function AdminPackagesPage() {
       name: pkg.name,
       classification_price: pkg.classification_price,
       price_per_transaction: pkg.price_per_transaction,
-      kas_fee: pkg.kas_fee,
+      group_commission_percent: pkg.group_commission_percent,
       transaction_quota: pkg.transaction_quota,
       validity_days: pkg.validity_days,
       description: pkg.description || '',
@@ -155,7 +155,7 @@ export default function AdminPackagesPage() {
       name: '',
       classification_price: 'UNDER_5K',
       price_per_transaction: 500,
-      kas_fee: 1000,
+      group_commission_percent: 5,
       transaction_quota: 50,
       validity_days: 30,
       description: '',
@@ -212,8 +212,8 @@ export default function AdminPackagesPage() {
                     <p className="font-medium">{formatPrice(pkg.price_per_transaction)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Biaya Kas</p>
-                    <p className="font-medium">{formatPrice(pkg.kas_fee)}</p>
+                    <p className="text-muted-foreground">Komisi Kelompok</p>
+                    <p className="font-medium">{pkg.group_commission_percent}%</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Kuota</p>
@@ -290,11 +290,13 @@ export default function AdminPackagesPage() {
                 />
               </div>
               <div>
-                <Label>Biaya Kas (Rp)</Label>
+                <Label>Komisi Kelompok (%)</Label>
                 <Input
                   type="number"
-                  value={formData.kas_fee}
-                  onChange={(e) => setFormData({ ...formData, kas_fee: Number(e.target.value) })}
+                  min={0}
+                  max={100}
+                  value={formData.group_commission_percent}
+                  onChange={(e) => setFormData({ ...formData, group_commission_percent: Number(e.target.value) })}
                 />
               </div>
             </div>

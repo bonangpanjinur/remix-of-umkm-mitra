@@ -54,6 +54,7 @@ import VerifikatorCodesPage from "./pages/verifikator/VerifikatorCodesPage";
 import VerifikatorMerchantsPage from "./pages/verifikator/VerifikatorMerchantsPage";
 import VerifikatorGroupsPage from "./pages/verifikator/VerifikatorGroupsPage";
 import VerifikatorGroupDetailPage from "./pages/verifikator/VerifikatorGroupDetailPage";
+import VerifikatorEarningsPage from "./pages/verifikator/VerifikatorEarningsPage";
 
 // Merchant Pages
 import MerchantDashboardPage from "./pages/merchant/MerchantDashboardPage";
@@ -252,6 +253,11 @@ const App = () => (
               <Route path="/verifikator/groups/:id" element={
                 <ProtectedRoute allowedRoles={['verifikator', 'admin']}>
                   <VerifikatorGroupDetailPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/verifikator/earnings" element={
+                <ProtectedRoute allowedRoles={['verifikator', 'admin']}>
+                  <VerifikatorEarningsPage />
                 </ProtectedRoute>
               } />
 
