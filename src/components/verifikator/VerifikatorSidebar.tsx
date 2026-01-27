@@ -6,7 +6,8 @@ import {
   Store, 
   ChevronLeft,
   ClipboardCheck,
-  Users
+  Users,
+  Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,6 +56,7 @@ export function VerifikatorSidebar() {
     { label: 'Kode Referral', href: '/verifikator/codes', icon: <TicketCheck className="h-4 w-4" /> },
     { label: 'Merchant', href: '/verifikator/merchants', icon: <Store className="h-4 w-4" />, badge: pendingMerchants },
     { label: 'Kelompok Dagang', href: '/verifikator/groups', icon: <Users className="h-4 w-4" /> },
+    { label: 'Pendapatan Komisi', href: '/verifikator/earnings', icon: <Wallet className="h-4 w-4" /> },
   ];
 
   return (

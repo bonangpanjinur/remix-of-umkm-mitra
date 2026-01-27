@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, CreditCard, AlertTriangle, Check, Clock, TrendingUp } from 'lucide-react';
+import { Package, CreditCard, AlertTriangle, Clock, TrendingUp } from 'lucide-react';
 import { MerchantLayout } from '@/components/merchant/MerchantLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +45,7 @@ interface TransactionPackage {
   name: string;
   classification_price: string;
   price_per_transaction: number;
-  kas_fee: number;
+  group_commission_percent: number;
   transaction_quota: number;
   validity_days: number;
   description: string | null;
@@ -143,6 +143,10 @@ export default function MerchantSubscriptionPage() {
     fetchData();
   }, [user]);
 
+  const calculatePackagePrice = (pkg: TransactionPackage) => {
+    return pkg.price_per_transaction * pkg.transaction_quota;
+  };
+
   const handleBuyPackage = async () => {
     if (!selectedPackage || !merchant) return;
 
@@ -151,7 +155,7 @@ export default function MerchantSubscriptionPage() {
       const expiredAt = new Date();
       expiredAt.setDate(expiredAt.getDate() + selectedPackage.validity_days);
 
-      const paymentAmount = (selectedPackage.price_per_transaction * selectedPackage.transaction_quota) + selectedPackage.kas_fee;
+      const paymentAmount = calculatePackagePrice(selectedPackage);
 
       const { error } = await supabase.from('merchant_subscriptions').insert({
         merchant_id: merchant.id,
@@ -316,15 +320,11 @@ export default function MerchantSubscriptionPage() {
                     <span className="text-muted-foreground">Biaya per Transaksi</span>
                     <span className="font-medium">{formatPrice(pkg.price_per_transaction)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Biaya Kas</span>
-                    <span className="font-medium">{formatPrice(pkg.kas_fee)}</span>
-                  </div>
                   <div className="border-t pt-3">
                     <div className="flex justify-between">
                       <span className="font-medium">Total</span>
                       <span className="font-bold text-primary">
-                        {formatPrice((pkg.price_per_transaction * pkg.transaction_quota) + pkg.kas_fee)}
+                        {formatPrice(calculatePackagePrice(pkg))}
                       </span>
                     </div>
                   </div>
@@ -401,16 +401,12 @@ export default function MerchantSubscriptionPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Biaya Transaksi</span>
-                    <span>{formatPrice(selectedPackage.price_per_transaction * selectedPackage.transaction_quota)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Biaya Kas</span>
-                    <span>{formatPrice(selectedPackage.kas_fee)}</span>
+                    <span>{formatPrice(calculatePackagePrice(selectedPackage))}</span>
                   </div>
                   <div className="border-t pt-2 font-semibold flex justify-between">
                     <span>Total Bayar</span>
                     <span className="text-primary">
-                      {formatPrice((selectedPackage.price_per_transaction * selectedPackage.transaction_quota) + selectedPackage.kas_fee)}
+                      {formatPrice(calculatePackagePrice(selectedPackage))}
                     </span>
                   </div>
                 </div>
