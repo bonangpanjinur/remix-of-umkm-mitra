@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Leaf } from 'lucide-react';
 import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
+import { InstallButton } from '@/components/pwa/InstallButton';
 import { useWhitelabel } from '@/hooks/useWhitelabel';
 
 export function Header() {
@@ -31,7 +32,10 @@ export function Header() {
           </div>
         </Link>
         
-        <NotificationDropdown />
+        <div className="flex items-center gap-2">
+          <InstallButton />
+          <NotificationDropdown />
+        </div>
       </div>
     </header>
   );
