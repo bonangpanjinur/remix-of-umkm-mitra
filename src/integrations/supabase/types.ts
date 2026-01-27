@@ -17,6 +17,8 @@ export type Database = {
       merchants: {
         Row: {
           address: string | null
+          approved_at: string | null
+          approved_by: string | null
           badge: string | null
           classification_price: string | null
           close_time: string | null
@@ -30,6 +32,9 @@ export type Database = {
           phone: string | null
           rating_avg: number | null
           rating_count: number | null
+          registered_at: string | null
+          registration_status: string
+          rejection_reason: string | null
           status: string
           updated_at: string
           user_id: string | null
@@ -37,6 +42,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           badge?: string | null
           classification_price?: string | null
           close_time?: string | null
@@ -50,6 +57,9 @@ export type Database = {
           phone?: string | null
           rating_avg?: number | null
           rating_count?: number | null
+          registered_at?: string | null
+          registration_status?: string
+          rejection_reason?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -57,6 +67,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           badge?: string | null
           classification_price?: string | null
           close_time?: string | null
@@ -70,6 +82,9 @@ export type Database = {
           phone?: string | null
           rating_avg?: number | null
           rating_count?: number | null
+          registered_at?: string | null
+          registration_status?: string
+          rejection_reason?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -357,6 +372,11 @@ export type Database = {
       }
       villages: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string
           description: string | null
           district: string
@@ -365,8 +385,16 @@ export type Database = {
           is_active: boolean
           name: string
           regency: string
+          registered_at: string | null
+          registration_status: string
+          rejection_reason: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string | null
           district: string
@@ -375,8 +403,16 @@ export type Database = {
           is_active?: boolean
           name: string
           regency: string
+          registered_at?: string | null
+          registration_status?: string
+          rejection_reason?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string | null
           district?: string
@@ -385,6 +421,9 @@ export type Database = {
           is_active?: boolean
           name?: string
           regency?: string
+          registered_at?: string | null
+          registration_status?: string
+          rejection_reason?: string | null
         }
         Relationships: []
       }
@@ -401,9 +440,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_verifikator: { Args: never; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "buyer"
+      app_role: "admin" | "buyer" | "verifikator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -531,7 +571,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "buyer"],
+      app_role: ["admin", "buyer", "verifikator"],
     },
   },
 } as const
