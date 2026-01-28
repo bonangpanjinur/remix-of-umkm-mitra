@@ -125,6 +125,51 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          last_run_at: string | null
+          name: string
+          next_run_at: string | null
+          schedule_day: number | null
+          schedule_time: string
+          schedule_type: string
+          tables_included: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          name: string
+          next_run_at?: string | null
+          schedule_day?: number | null
+          schedule_time?: string
+          schedule_type?: string
+          tables_included?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_run_at?: string | null
+          name?: string
+          next_run_at?: string | null
+          schedule_day?: number | null
+          schedule_time?: string
+          schedule_type?: string
+          tables_included?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       broadcast_notifications: {
         Row: {
           created_at: string
@@ -813,6 +858,9 @@ export type Database = {
           assigned_at: string | null
           buyer_distance_km: number | null
           buyer_id: string
+          cod_confirmed_at: string | null
+          cod_rejected_at: string | null
+          cod_rejection_reason: string | null
           cod_service_fee: number | null
           confirmation_deadline: string | null
           confirmed_at: string | null
@@ -852,6 +900,9 @@ export type Database = {
           assigned_at?: string | null
           buyer_distance_km?: number | null
           buyer_id: string
+          cod_confirmed_at?: string | null
+          cod_rejected_at?: string | null
+          cod_rejection_reason?: string | null
           cod_service_fee?: number | null
           confirmation_deadline?: string | null
           confirmed_at?: string | null
@@ -891,6 +942,9 @@ export type Database = {
           assigned_at?: string | null
           buyer_distance_km?: number | null
           buyer_id?: string
+          cod_confirmed_at?: string | null
+          cod_rejected_at?: string | null
+          cod_rejection_reason?: string | null
           cod_service_fee?: number | null
           confirmation_deadline?: string | null
           confirmed_at?: string | null
@@ -1867,6 +1921,7 @@ export type Database = {
           id: string
           processed_at: string | null
           processed_by: string | null
+          proof_image_url: string | null
           status: string
           updated_at: string
           verifikator_id: string
@@ -1881,6 +1936,7 @@ export type Database = {
           id?: string
           processed_at?: string | null
           processed_by?: string | null
+          proof_image_url?: string | null
           status?: string
           updated_at?: string
           verifikator_id: string
@@ -1895,6 +1951,7 @@ export type Database = {
           id?: string
           processed_at?: string | null
           processed_by?: string | null
+          proof_image_url?: string | null
           status?: string
           updated_at?: string
           verifikator_id?: string
@@ -2342,6 +2399,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: string
+      }
+      update_cod_trust_score: {
+        Args: { p_buyer_id: string; p_success: boolean }
+        Returns: undefined
       }
       use_merchant_quota: { Args: { p_merchant_id: string }; Returns: boolean }
     }
