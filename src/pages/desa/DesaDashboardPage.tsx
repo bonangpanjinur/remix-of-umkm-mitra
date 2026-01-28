@@ -39,20 +39,19 @@ export default function DesaDashboardPage() {
       if (!user) return;
 
       try {
-        // For now, we'll check if user has a village assigned
-        // In a real app, you'd have a user_villages junction table or admin_desa role linked to a village
-        const { data: villages } = await supabase
-          .from('villages')
-          .select('id, name, district, regency, registration_status')
-          .eq('registration_status', 'APPROVED')
-          .limit(1);
+        // Check user's village assignment via user_villages table
+        const { data: userVillage } = await supabase
+          .from('user_villages')
+          .select('village_id, villages(id, name, district, regency, registration_status)')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-        if (!villages || villages.length === 0) {
+        if (!userVillage?.villages) {
           setLoading(false);
           return;
         }
 
-        const villageData = villages[0];
+        const villageData = userVillage.villages as unknown as VillageData;
         setVillage(villageData);
 
         // Get stats for this village
