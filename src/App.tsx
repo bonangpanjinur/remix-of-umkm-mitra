@@ -25,6 +25,8 @@ import OrdersPage from "./pages/OrdersPage";
 import AccountPage from "./pages/AccountPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import RegisterPage from "./pages/RegisterPage";
 import RegisterVillagePage from "./pages/RegisterVillagePage";
 import RegisterMerchantPage from "./pages/RegisterMerchantPage";
@@ -42,6 +44,7 @@ import InstallPage from "./pages/InstallPage";
 // Admin Pages
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
+import AdminMerchantDetailPage from "./pages/admin/AdminMerchantDetailPage";
 import AdminMerchantsPage from "./pages/admin/AdminMerchantsPage";
 import AdminVillagesPage from "./pages/admin/AdminVillagesPage";
 import AdminCouriersPage from "./pages/admin/AdminCouriersPage";
@@ -118,6 +121,8 @@ const App = () => (
               <Route path="/explore" element={<ExplorePage />} />
               <Route path="/search" element={<SearchResultsPage />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/register/village" element={<RegisterVillagePage />} />
               <Route path="/register/merchant" element={<RegisterMerchantPage />} />
@@ -198,6 +203,11 @@ const App = () => (
               <Route path="/admin/merchants" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminMerchantsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/merchants/:id" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminMerchantDetailPage />
                 </ProtectedRoute>
               } />
               <Route path="/admin/villages" element={

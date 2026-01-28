@@ -253,6 +253,13 @@ export default function AuthPage() {
             </div>
           )}
 
+          {isLogin && (
+            <div className="mt-4 text-center">
+              <Link to="/forgot-password" className="text-sm text-muted-foreground hover:text-primary">
+                Lupa password?
+              </Link>
+            </div>
+          )}
           <Button 
             type="submit" 
             className="w-full shadow-brand" 
