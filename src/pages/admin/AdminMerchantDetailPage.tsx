@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Store, MapPin, Phone, Clock, Star, Package, 
   ShoppingCart, Check, X, Edit, MoreHorizontal, Tag, Users,
-  Calendar, CreditCard, TrendingUp
+  Calendar, CreditCard, TrendingUp, Plus
 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -17,10 +17,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { approveMerchant, rejectMerchant } from '@/lib/adminApi';
+import { MerchantEditDialog } from '@/components/admin/MerchantEditDialog';
+import { AssignPackageDialog } from '@/components/admin/AssignPackageDialog';
 
 interface MerchantDetail {
   id: string;
@@ -76,6 +79,8 @@ export default function AdminMerchantDetailPage() {
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [stats, setStats] = useState({
     totalProducts: 0,
     activeProducts: 0,
@@ -264,6 +269,10 @@ export default function AdminMerchantDetailPage() {
               </Button>
             </>
           )}
+          <Button variant="outline" size="sm" onClick={() => setPackageDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" />
+            Tambah Paket
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon">
@@ -271,9 +280,14 @@ export default function AdminMerchantDetailPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setEditDialogOpen(true)}>
                 <Edit className="h-4 w-4 mr-2" />
-                Edit Merchant
+                Edit Data Merchant
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setPackageDialogOpen(true)}>
+                <Package className="h-4 w-4 mr-2" />
+                Tambah Paket Transaksi
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -557,6 +571,39 @@ export default function AdminMerchantDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Merchant Dialog */}
+      {merchant && (
+        <MerchantEditDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          merchantId={merchant.id}
+          initialData={{
+            name: merchant.name,
+            phone: merchant.phone,
+            address: merchant.address,
+            open_time: merchant.open_time,
+            close_time: merchant.close_time,
+            business_category: merchant.business_category,
+            business_description: merchant.business_description,
+            is_open: merchant.is_open,
+            status: merchant.status,
+          }}
+          onSuccess={fetchMerchantData}
+        />
+      )}
+
+      {/* Assign Package Dialog */}
+      {merchant && (
+        <AssignPackageDialog
+          open={packageDialogOpen}
+          onOpenChange={setPackageDialogOpen}
+          merchantId={merchant.id}
+          merchantName={merchant.name}
+          classificationPrice={merchant.classification_price}
+          onSuccess={fetchMerchantData}
+        />
+      )}
     </AdminLayout>
   );
 }
