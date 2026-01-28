@@ -12,6 +12,13 @@ const badgeVariants = cva(
         secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
+        // Status variants using semantic tokens
+        success: "border-transparent bg-success/15 text-success",
+        warning: "border-transparent bg-warning/15 text-warning",
+        info: "border-transparent bg-info/15 text-info",
+        pending: "border-transparent bg-status-pending/15 text-status-pending",
+        online: "border-transparent bg-status-online/15 text-status-online",
+        offline: "border-transparent bg-status-offline/15 text-status-offline",
       },
     },
     defaultVariants: {

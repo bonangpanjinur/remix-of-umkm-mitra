@@ -23,13 +23,13 @@ interface Order {
 }
 
 const statusConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  NEW: { label: 'Pesanan Baru', icon: Clock, color: 'text-amber-500' },
-  PROCESSING: { label: 'Diproses', icon: Package, color: 'text-blue-500' },
-  ASSIGNED: { label: 'Kurir Ditugaskan', icon: Truck, color: 'text-purple-500' },
-  PICKED_UP: { label: 'Diambil', icon: Truck, color: 'text-orange-500' },
+  NEW: { label: 'Pesanan Baru', icon: Clock, color: 'text-warning' },
+  PROCESSING: { label: 'Diproses', icon: Package, color: 'text-info' },
+  ASSIGNED: { label: 'Kurir Ditugaskan', icon: Truck, color: 'text-status-pending' },
+  PICKED_UP: { label: 'Diambil', icon: Truck, color: 'text-warning' },
   ON_DELIVERY: { label: 'Dalam Perjalanan', icon: Truck, color: 'text-primary' },
-  DELIVERED: { label: 'Terkirim', icon: CheckCircle, color: 'text-green-500' },
-  DONE: { label: 'Selesai', icon: CheckCircle, color: 'text-green-500' },
+  DELIVERED: { label: 'Terkirim', icon: CheckCircle, color: 'text-success' },
+  DONE: { label: 'Selesai', icon: CheckCircle, color: 'text-success' },
   CANCELED: { label: 'Dibatalkan', icon: XCircle, color: 'text-destructive' },
 };
 

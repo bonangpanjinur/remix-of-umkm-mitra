@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, Send, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Star, Send, ArrowLeft, Image as ImageIcon, X, Loader2 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/button';
@@ -33,8 +33,11 @@ export default function ReviewsPage() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [comments, setComments] = useState<Record<string, string>>({});
+  const [images, setImages] = useState<Record<string, File[]>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState<Record<string, boolean>>({});
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     if (orderId && user) {
@@ -63,6 +66,20 @@ export default function ReviewsPage() {
         return;
       }
 
+      // Check if review already exists
+      const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('order_id', orderId)
+        .eq('buyer_id', user?.id)
+        .limit(1);
+
+      if (existingReview && existingReview.length > 0) {
+        toast.info('Anda sudah memberikan ulasan untuk pesanan ini');
+        navigate('/orders');
+        return;
+      }
+
       setOrder(orderData);
 
       const { data: itemsData } = await supabase
@@ -75,14 +92,17 @@ export default function ReviewsPage() {
       // Initialize ratings
       const initialRatings: Record<string, number> = {};
       const initialComments: Record<string, string> = {};
+      const initialImages: Record<string, File[]> = {};
       (itemsData || []).forEach(item => {
         if (item.product_id) {
           initialRatings[item.product_id] = 5;
           initialComments[item.product_id] = '';
+          initialImages[item.product_id] = [];
         }
       });
       setRatings(initialRatings);
       setComments(initialComments);
+      setImages(initialImages);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -90,21 +110,86 @@ export default function ReviewsPage() {
     }
   };
 
+  const handleImageSelect = (productId: string, files: FileList | null) => {
+    if (!files) return;
+    
+    const newFiles = Array.from(files).slice(0, 3 - (images[productId]?.length || 0));
+    if (newFiles.length === 0) {
+      toast.error('Maksimal 3 foto per produk');
+      return;
+    }
+
+    setImages(prev => ({
+      ...prev,
+      [productId]: [...(prev[productId] || []), ...newFiles]
+    }));
+  };
+
+  const removeImage = (productId: string, index: number) => {
+    setImages(prev => ({
+      ...prev,
+      [productId]: prev[productId].filter((_, i) => i !== index)
+    }));
+  };
+
+  const uploadImages = async (productId: string): Promise<string[]> => {
+    const productImages = images[productId] || [];
+    if (productImages.length === 0) return [];
+
+    setUploadingImages(prev => ({ ...prev, [productId]: true }));
+    const urls: string[] = [];
+
+    try {
+      for (const file of productImages) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user?.id}/${orderId}/${productId}/${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('review-images')
+          .upload(fileName, file);
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          continue;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('review-images')
+          .getPublicUrl(fileName);
+
+        if (urlData) {
+          urls.push(urlData.publicUrl);
+        }
+      }
+    } finally {
+      setUploadingImages(prev => ({ ...prev, [productId]: false }));
+    }
+
+    return urls;
+  };
+
   const handleSubmit = async () => {
     if (!order || !user) return;
 
     setSubmitting(true);
     try {
-      const reviews = items
-        .filter(item => item.product_id)
-        .map(item => ({
+      const reviews = [];
+
+      for (const item of items) {
+        if (!item.product_id) continue;
+
+        const imageUrls = await uploadImages(item.product_id);
+
+        reviews.push({
           buyer_id: user.id,
           merchant_id: order.merchant_id,
           product_id: item.product_id,
           order_id: order.id,
           rating: ratings[item.product_id] || 5,
           comment: comments[item.product_id] || null,
-        }));
+          image_urls: imageUrls.length > 0 ? imageUrls : null,
+        });
+      }
 
       const { error } = await supabase.from('reviews').insert(reviews);
 
@@ -169,9 +254,9 @@ export default function ReviewsPage() {
                       className="p-1"
                     >
                       <Star
-                        className={`h-6 w-6 ${
+                        className={`h-6 w-6 transition-colors ${
                           star <= (item.product_id ? ratings[item.product_id] || 0 : 0)
-                            ? 'text-amber-400 fill-amber-400'
+                            ? 'text-warning fill-warning'
                             : 'text-muted-foreground'
                         }`}
                       />
@@ -192,7 +277,60 @@ export default function ReviewsPage() {
                     }
                   }}
                   rows={3}
+                  className="mb-3"
                 />
+
+                {/* Image Upload */}
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    ref={el => fileInputRefs.current[item.product_id] = el}
+                    onChange={(e) => handleImageSelect(item.product_id, e.target.files)}
+                    className="hidden"
+                  />
+                  
+                  {/* Image Previews */}
+                  {item.product_id && images[item.product_id]?.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {images[item.product_id].map((file, imgIndex) => (
+                        <div key={imgIndex} className="relative">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`Preview ${imgIndex + 1}`}
+                            className="w-16 h-16 object-cover rounded-lg border border-border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(item.product_id, imgIndex)}
+                            className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add Photo Button */}
+                  {item.product_id && (images[item.product_id]?.length || 0) < 3 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRefs.current[item.product_id]?.click()}
+                      disabled={uploadingImages[item.product_id]}
+                    >
+                      {uploadingImages[item.product_id] ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <ImageIcon className="h-4 w-4 mr-2" />
+                      )}
+                      Tambah Foto ({images[item.product_id]?.length || 0}/3)
+                    </Button>
+                  )}
+                </div>
               </motion.div>
             ))}
           </div>
@@ -202,7 +340,11 @@ export default function ReviewsPage() {
             onClick={handleSubmit}
             disabled={submitting}
           >
-            <Send className="h-4 w-4 mr-2" />
+            {submitting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 mr-2" />
+            )}
             {submitting ? 'Mengirim...' : 'Kirim Ulasan'}
           </Button>
         </div>
