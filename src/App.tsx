@@ -67,6 +67,9 @@ import AdminPWASettingsPage from "./pages/admin/AdminPWASettingsPage";
 import AdminWhitelabelPage from "./pages/admin/AdminWhitelabelPage";
 import AdminRolesPage from "./pages/admin/AdminRolesPage";
 import AdminBackupPage from "./pages/admin/AdminBackupPage";
+import AdminScheduledBackupPage from "./pages/admin/AdminScheduledBackupPage";
+import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
+import AdminVerifikatorWithdrawalsPage from "./pages/admin/AdminVerifikatorWithdrawalsPage";
 import AdminSEOPage from "./pages/admin/AdminSEOPage";
 import CourierHistoryPage from "./pages/courier/CourierHistoryPage";
 // Verifikator Pages
@@ -322,6 +325,21 @@ const App = () => (
               <Route path="/admin/seo" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <AdminSEOPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/categories" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminCategoriesPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/scheduled-backup" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminScheduledBackupPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/verifikator-withdrawals" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminVerifikatorWithdrawalsPage />
                 </ProtectedRoute>
               } />
 

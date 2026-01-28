@@ -23,7 +23,10 @@ import {
   Palette,
   Shield,
   Database,
-  Globe
+  Globe,
+  Tags,
+  Clock,
+  Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -56,7 +59,9 @@ export function AdminSidebar({ pendingMerchants = 0, pendingVillages = 0, pendin
     { label: 'Desa Wisata', href: '/admin/villages', icon: <MapPin className="h-4 w-4" />, badge: pendingVillages },
     { label: 'Kurir', href: '/admin/couriers', icon: <Bike className="h-4 w-4" />, badge: pendingCouriers },
     { label: 'Paket Transaksi', href: '/admin/packages', icon: <Package className="h-4 w-4" /> },
+    { label: 'Kategori Produk', href: '/admin/categories', icon: <Tags className="h-4 w-4" /> },
     { label: 'Komisi Verifikator', href: '/admin/verifikator-commissions', icon: <Percent className="h-4 w-4" />, badge: pendingVerifikatorWithdrawals },
+    { label: 'WD Verifikator', href: '/admin/verifikator-withdrawals', icon: <Wallet className="h-4 w-4" /> },
     { label: 'Penarikan Merchant', href: '/admin/withdrawals', icon: <RotateCcw className="h-4 w-4" />, badge: pendingWithdrawals },
     { label: 'Laporan Keuangan', href: '/admin/finance', icon: <DollarSign className="h-4 w-4" /> },
     { label: 'Refund', href: '/admin/refunds', icon: <RotateCcw className="h-4 w-4" />, badge: pendingRefunds },
@@ -66,6 +71,7 @@ export function AdminSidebar({ pendingMerchants = 0, pendingVillages = 0, pendin
     { label: 'Broadcast', href: '/admin/broadcast', icon: <Bell className="h-4 w-4" /> },
     { label: 'Kode Verifikator', href: '/admin/codes', icon: <TicketCheck className="h-4 w-4" /> },
     { label: 'Backup Data', href: '/admin/backup', icon: <Database className="h-4 w-4" /> },
+    { label: 'Backup Terjadwal', href: '/admin/scheduled-backup', icon: <Clock className="h-4 w-4" /> },
     { label: 'SEO Settings', href: '/admin/seo', icon: <Globe className="h-4 w-4" /> },
     { label: 'System Logs', href: '/admin/logs', icon: <ScrollText className="h-4 w-4" /> },
     { label: 'PWA Settings', href: '/admin/pwa', icon: <Smartphone className="h-4 w-4" /> },
