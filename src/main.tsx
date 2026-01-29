@@ -35,16 +35,26 @@ const injectDynamicManifest = async () => {
       const blob = new Blob([stringManifest], { type: 'application/json' });
       const manifestURL = URL.createObjectURL(blob);
       
-      const link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
-      if (link) {
-        link.setAttribute('href', manifestURL);
+      // Remove existing manifest link if any
+      const existingLink = document.querySelector('link[rel="manifest"]');
+      if (existingLink) {
+        existingLink.remove();
       }
+
+      // Create and append new manifest link
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = manifestURL;
+      document.head.appendChild(link);
+      
+      console.log("Dynamic manifest injected successfully");
     }
   } catch (err) {
     console.error("Failed to inject dynamic manifest", err);
   }
 };
 
+// Inject manifest immediately
 injectDynamicManifest();
 
 createRoot(document.getElementById("root")!).render(<App />);
