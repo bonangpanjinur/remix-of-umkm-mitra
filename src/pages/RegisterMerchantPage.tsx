@@ -94,8 +94,6 @@ export default function RegisterMerchantPage() {
   const [districtsList, setDistrictsList] = useState<Region[]>([]);
   const [subdistrictsList, setSubdistrictsList] = useState<Region[]>([]);
   
-  const [addressLoading, setAddressLoading] = useState(false);
-  
   // Matched village
   const [matchedVillage, setMatchedVillage] = useState<Village | null>(null);
   const [villageLoading, setVillageLoading] = useState(false);
@@ -116,14 +114,11 @@ export default function RegisterMerchantPage() {
   // Load provinces on mount
   useEffect(() => {
     const loadProvinces = async () => {
-      setAddressLoading(true);
       try {
         const data = await fetchProvinces();
         setProvincesList(data);
       } catch (error) {
         console.error('Error loading provinces:', error);
-      } finally {
-        setAddressLoading(false);
       }
     };
     loadProvinces();
@@ -133,7 +128,6 @@ export default function RegisterMerchantPage() {
   useEffect(() => {
     const loadCities = async () => {
       if (selectedProvince) {
-        setAddressLoading(true);
         try {
           const data = await fetchRegencies(selectedProvince);
           setCities(data);
@@ -145,8 +139,6 @@ export default function RegisterMerchantPage() {
           setValue('subdistrict', '');
         } catch (error) {
           console.error('Error loading cities:', error);
-        } finally {
-          setAddressLoading(false);
         }
       }
     };
@@ -156,7 +148,6 @@ export default function RegisterMerchantPage() {
   useEffect(() => {
     const loadDistricts = async () => {
       if (selectedCity) {
-        setAddressLoading(true);
         try {
           const data = await fetchDistricts(selectedCity);
           setDistrictsList(data);
@@ -166,8 +157,6 @@ export default function RegisterMerchantPage() {
           setValue('subdistrict', '');
         } catch (error) {
           console.error('Error loading districts:', error);
-        } finally {
-          setAddressLoading(false);
         }
       }
     };
@@ -177,7 +166,6 @@ export default function RegisterMerchantPage() {
   useEffect(() => {
     const loadSubdistricts = async () => {
       if (selectedDistrict) {
-        setAddressLoading(true);
         try {
           const data = await fetchVillages(selectedDistrict);
           setSubdistrictsList(data);
@@ -185,8 +173,6 @@ export default function RegisterMerchantPage() {
           setValue('subdistrict', '');
         } catch (error) {
           console.error('Error loading subdistricts:', error);
-        } finally {
-          setAddressLoading(false);
         }
       }
     };
@@ -576,14 +562,13 @@ export default function RegisterMerchantPage() {
                   <div className="col-span-2">
                     <Label className="text-xs">Provinsi *</Label>
                     <Select 
-                      value={selectedProvince}
                       onValueChange={(value) => {
                         setSelectedProvince(value);
                         setValue('province', value);
                       }}
                     >
                       <SelectTrigger className="mt-1.5">
-                        <SelectValue placeholder={addressLoading && provincesList.length === 0 ? "Memuat..." : "Pilih provinsi"} />
+                        <SelectValue placeholder="Pilih provinsi" />
                       </SelectTrigger>
                       <SelectContent>
                         {provincesList.map((p) => (
@@ -599,15 +584,14 @@ export default function RegisterMerchantPage() {
                   <div className="col-span-2">
                     <Label className="text-xs">Kabupaten/Kota *</Label>
                     <Select 
-                      value={selectedCity}
                       onValueChange={(value) => {
                         setSelectedCity(value);
                         setValue('city', value);
                       }}
-                      disabled={!selectedProvince || (addressLoading && cities.length === 0)}
+                      disabled={!selectedProvince}
                     >
                       <SelectTrigger className="mt-1.5">
-                        <SelectValue placeholder={!selectedProvince ? "Pilih provinsi dulu" : (addressLoading && cities.length === 0 ? "Memuat..." : "Pilih kabupaten/kota")} />
+                        <SelectValue placeholder={selectedProvince ? "Pilih kabupaten/kota" : "Pilih provinsi dulu"} />
                       </SelectTrigger>
                       <SelectContent>
                         {cities.map((c) => (
@@ -623,15 +607,14 @@ export default function RegisterMerchantPage() {
                   <div>
                     <Label className="text-xs">Kecamatan *</Label>
                     <Select 
-                      value={selectedDistrict}
                       onValueChange={(value) => {
                         setSelectedDistrict(value);
                         setValue('district', value);
                       }}
-                      disabled={!selectedCity || (addressLoading && districtsList.length === 0)}
+                      disabled={!selectedCity}
                     >
                       <SelectTrigger className="mt-1.5">
-                        <SelectValue placeholder={!selectedCity ? "Pilih kota dulu" : (addressLoading && districtsList.length === 0 ? "Memuat..." : "Pilih kecamatan")} />
+                        <SelectValue placeholder="Pilih kecamatan" />
                       </SelectTrigger>
                       <SelectContent>
                         {districtsList.map((d) => (
@@ -647,15 +630,14 @@ export default function RegisterMerchantPage() {
                   <div>
                     <Label className="text-xs">Kelurahan/Desa *</Label>
                     <Select 
-                      value={selectedSubdistrict}
                       onValueChange={(value) => {
                         setSelectedSubdistrict(value);
                         setValue('subdistrict', value);
                       }}
-                      disabled={!selectedDistrict || (addressLoading && subdistrictsList.length === 0)}
+                      disabled={!selectedDistrict}
                     >
                       <SelectTrigger className="mt-1.5">
-                        <SelectValue placeholder={!selectedDistrict ? "Pilih kecamatan dulu" : (addressLoading && subdistrictsList.length === 0 ? "Memuat..." : "Pilih kelurahan")} />
+                        <SelectValue placeholder="Pilih kelurahan" />
                       </SelectTrigger>
                       <SelectContent>
                         {subdistrictsList.map((s) => (
