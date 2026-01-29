@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { MapPin, User, Phone, Mail, ArrowLeft, CheckCircle, Building } from 'lucide-react';
+import { MapPin, User, Phone, Mail, ArrowLeft, CheckCircle, Building, MapPinned } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/button';
@@ -160,91 +160,64 @@ export default function RegisterVillagePage() {
 
   if (isSuccess) {
     return (
-      <div className="mobile-shell bg-background flex flex-col min-h-screen">
-        <Header />
-        <div className="flex-1 flex items-center justify-center p-6">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-center max-w-sm"
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-card p-8 rounded-3xl shadow-sm border border-border max-w-md w-full"
+        >
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="h-10 w-10 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Pendaftaran Berhasil!</h1>
+          <p className="text-muted-foreground mb-8">
+            Data desa wisata Anda telah kami terima dan sedang dalam proses verifikasi. 
+            Kami akan menghubungi Anda melalui email atau nomor WhatsApp yang terdaftar.
+          </p>
+          <Button 
+            onClick={() => navigate('/')} 
+            className="w-full rounded-xl py-6"
           >
-            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="h-10 w-10 text-primary" />
-            </div>
-            <h1 className="text-xl font-bold text-foreground mb-2">
-              Pendaftaran Terkirim!
-            </h1>
-            <p className="text-muted-foreground text-sm mb-6">
-              Pendaftaran desa wisata Anda sedang dalam proses verifikasi oleh Admin. 
-              Kami akan menghubungi Anda melalui email atau telepon setelah disetujui.
-            </p>
-            <Button onClick={() => navigate('/')} className="w-full">
-              Kembali ke Beranda
-            </Button>
-          </motion.div>
-        </div>
-        <BottomNav />
+            Kembali ke Beranda
+          </Button>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="mobile-shell bg-background flex flex-col min-h-screen">
-      <Header />
+    <div className="min-h-screen bg-background pb-24">
+      <Header title="Daftar Desa Wisata" showBack onBack={() => navigate(-1)} />
       
-      <div className="flex-1 overflow-y-auto pb-24">
-        <div className="px-5 py-4">
-          {/* Back button */}
-          <button 
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-muted-foreground text-sm mb-4 hover:text-foreground transition"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Kembali
-          </button>
+      <main className="p-4 max-w-lg mx-auto">
+        <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
+          {/* Header Section */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Building className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h1 className="text-lg font-bold text-foreground leading-tight">Daftarkan Desa</h1>
+              <p className="text-xs text-muted-foreground">Lengkapi data desa wisata Anda</p>
+            </div>
+          </div>
 
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Building className="h-6 w-6 text-primary" />
-              </div>
+          {/* Info Card */}
+          <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10 mb-8">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
               <div>
-                <h1 className="text-xl font-bold text-foreground">Daftarkan Desa</h1>
-                <p className="text-xs text-muted-foreground">
-                  Daftar sebagai Desa Wisata
+                <p className="text-sm font-semibold text-foreground">Proses Verifikasi</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pendaftaran akan diverifikasi oleh Admin dalam 1-3 hari kerja. Pastikan data yang diisi valid.
                 </p>
               </div>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Info Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6"
-          >
-            <p className="text-xs text-foreground">
-              <strong>Proses Verifikasi:</strong> Pendaftaran akan diverifikasi oleh Admin dalam 1-3 hari kerja. 
-              Pastikan data yang diisi valid dan dapat dihubungi.
-            </p>
-          </motion.div>
-
-          {/* Form */}
-          <motion.form
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            onSubmit={handleSubmit(onSubmit)}
-            className="space-y-5"
-          >
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Village Info Section */}
-            <div className="space-y-4">
+            <div className="space-y-5">
               <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
                 Informasi Desa
@@ -264,95 +237,102 @@ export default function RegisterVillagePage() {
               </div>
 
               <div className="space-y-4">
-                <div>
-                  <Label className="text-xs">Provinsi *</Label>
-                  <Select 
-                    onValueChange={(value) => {
-                      setSelectedProvince(value);
-                      setValue('province', value);
-                    }}
-                  >
-                    <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder="Pilih provinsi" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {provincesList.map((p) => (
-                        <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.province && (
-                    <p className="text-destructive text-xs mt-1">{errors.province.message}</p>
-                  )}
-                </div>
+                <h2 className="font-semibold text-sm text-foreground flex items-center gap-2 pt-2">
+                  <MapPinned className="h-4 w-4 text-primary" />
+                  Alamat Lengkap
+                </h2>
 
-                <div>
-                  <Label className="text-xs">Kabupaten/Kota *</Label>
-                  <Select 
-                    onValueChange={(value) => {
-                      setSelectedRegency(value);
-                      setValue('regency', value);
-                    }}
-                    disabled={!selectedProvince}
-                  >
-                    <SelectTrigger className="mt-1.5">
-                      <SelectValue placeholder={selectedProvince ? "Pilih kabupaten/kota" : "Pilih provinsi dulu"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regenciesList.map((r) => (
-                        <SelectItem key={r.code} value={r.code}>{r.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.regency && (
-                    <p className="text-destructive text-xs mt-1">{errors.regency.message}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-4">
                   <div>
-                    <Label className="text-xs">Kecamatan *</Label>
+                    <Label className="text-xs">Provinsi *</Label>
                     <Select 
                       onValueChange={(value) => {
-                        setSelectedDistrict(value);
-                        setValue('district', value);
+                        setSelectedProvince(value);
+                        setValue('province', value);
                       }}
-                      disabled={!selectedRegency}
                     >
                       <SelectTrigger className="mt-1.5">
-                        <SelectValue placeholder="Pilih kecamatan" />
+                        <SelectValue placeholder="Pilih provinsi" />
                       </SelectTrigger>
                       <SelectContent>
-                        {districtsList.map((d) => (
-                          <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
+                        {provincesList.map((p) => (
+                          <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    {errors.district && (
-                      <p className="text-destructive text-xs mt-1">{errors.district.message}</p>
+                    {errors.province && (
+                      <p className="text-destructive text-xs mt-1">{errors.province.message}</p>
                     )}
                   </div>
 
                   <div>
-                    <Label className="text-xs">Kelurahan/Desa *</Label>
+                    <Label className="text-xs">Kabupaten/Kota *</Label>
                     <Select 
                       onValueChange={(value) => {
-                        setValue('subdistrict', value);
+                        setSelectedRegency(value);
+                        setValue('regency', value);
                       }}
-                      disabled={!selectedDistrict}
+                      disabled={!selectedProvince}
                     >
                       <SelectTrigger className="mt-1.5">
-                        <SelectValue placeholder="Pilih kelurahan" />
+                        <SelectValue placeholder={selectedProvince ? "Pilih kabupaten/kota" : "Pilih provinsi dulu"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {subdistrictsList.map((s) => (
-                          <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>
+                        {regenciesList.map((r) => (
+                          <SelectItem key={r.code} value={r.code}>{r.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    {errors.subdistrict && (
-                      <p className="text-destructive text-xs mt-1">{errors.subdistrict.message}</p>
+                    {errors.regency && (
+                      <p className="text-destructive text-xs mt-1">{errors.regency.message}</p>
                     )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Kecamatan *</Label>
+                      <Select 
+                        onValueChange={(value) => {
+                          setSelectedDistrict(value);
+                          setValue('district', value);
+                        }}
+                        disabled={!selectedRegency}
+                      >
+                        <SelectTrigger className="mt-1.5">
+                          <SelectValue placeholder="Pilih kecamatan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {districtsList.map((d) => (
+                            <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.district && (
+                        <p className="text-destructive text-xs mt-1">{errors.district.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Kelurahan/Desa *</Label>
+                      <Select 
+                        onValueChange={(value) => {
+                          setValue('subdistrict', value);
+                        }}
+                        disabled={!selectedDistrict}
+                      >
+                        <SelectTrigger className="mt-1.5">
+                          <SelectValue placeholder="Pilih kelurahan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subdistrictsList.map((s) => (
+                            <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.subdistrict && (
+                        <p className="text-destructive text-xs mt-1">{errors.subdistrict.message}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -361,7 +341,7 @@ export default function RegisterVillagePage() {
                 <Label htmlFor="description" className="text-xs">Deskripsi Desa *</Label>
                 <Textarea
                   id="description"
-                  placeholder="Ceritakan tentang desa wisata Anda, potensi wisata, budaya, dan keunikannya..."
+                  placeholder="Ceritakan tentang potensi wisata, budaya, dan keunikan desa Anda..."
                   {...register('description')}
                   className="mt-1.5 min-h-[100px]"
                 />
@@ -372,7 +352,7 @@ export default function RegisterVillagePage() {
             </div>
 
             {/* Contact Info Section */}
-            <div className="space-y-4 pt-2">
+            <div className="space-y-5 pt-4 border-t border-border">
               <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
                 <User className="h-4 w-4 text-primary" />
                 Kontak Penanggung Jawab
@@ -394,62 +374,64 @@ export default function RegisterVillagePage() {
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="contactPhone" className="text-xs">Nomor Telepon/WhatsApp *</Label>
-                <div className="relative mt-1.5">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="contactPhone"
-                    placeholder="08xxxxxxxxxx"
-                    {...register('contactPhone')}
-                    className="pl-10"
-                  />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="contactPhone" className="text-xs">Nomor WhatsApp *</Label>
+                  <div className="relative mt-1.5">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="contactPhone"
+                      placeholder="08xxxxxxxxxx"
+                      {...register('contactPhone')}
+                      className="pl-10"
+                    />
+                  </div>
+                  {errors.contactPhone && (
+                    <p className="text-destructive text-xs mt-1">{errors.contactPhone.message}</p>
+                  )}
                 </div>
-                {errors.contactPhone && (
-                  <p className="text-destructive text-xs mt-1">{errors.contactPhone.message}</p>
-                )}
-              </div>
 
-              <div>
-                <Label htmlFor="contactEmail" className="text-xs">Email *</Label>
-                <div className="relative mt-1.5">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="contactEmail"
-                    type="email"
-                    placeholder="email@contoh.com"
-                    {...register('contactEmail')}
-                    className="pl-10"
-                  />
+                <div>
+                  <Label htmlFor="contactEmail" className="text-xs">Email *</Label>
+                  <div className="relative mt-1.5">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="contactEmail"
+                      type="email"
+                      placeholder="email@contoh.com"
+                      {...register('contactEmail')}
+                      className="pl-10"
+                    />
+                  </div>
+                  {errors.contactEmail && (
+                    <p className="text-destructive text-xs mt-1">{errors.contactEmail.message}</p>
+                  )}
                 </div>
-                {errors.contactEmail && (
-                  <p className="text-destructive text-xs mt-1">{errors.contactEmail.message}</p>
-                )}
               </div>
             </div>
 
             {/* Submit Button */}
             <Button 
               type="submit" 
-              className="w-full mt-6"
+              className="w-full rounded-xl py-6 mt-4"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent mr-2" />
-                  Mengirim...
-                </>
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  <span>Mengirim...</span>
+                </div>
               ) : (
                 'Kirim Pendaftaran'
               )}
             </Button>
 
-            <p className="text-xs text-muted-foreground text-center">
-              Dengan mendaftar, Anda menyetujui syarat dan ketentuan yang berlaku
+            <p className="text-[10px] text-muted-foreground text-center">
+              Dengan mendaftar, Anda menyetujui syarat dan ketentuan yang berlaku di platform UMKM Desa Wisata.
             </p>
-          </motion.form>
+          </form>
         </div>
-      </div>
+      </main>
       
       <BottomNav />
     </div>
