@@ -1,23 +1,30 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { MapPin, User, Phone, Mail, FileText, ArrowLeft, CheckCircle, Building } from 'lucide-react';
+import { MapPin, User, Phone, Mail, ArrowLeft, CheckCircle, Building } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { 
+  fetchProvinces, fetchRegencies, fetchDistricts, fetchVillages,
+  type Region 
+} from '@/lib/addressApi';
 
 const villageSchema = z.object({
   name: z.string().min(3, 'Nama desa minimal 3 karakter').max(100),
-  district: z.string().min(2, 'Nama kecamatan minimal 2 karakter').max(100),
-  regency: z.string().min(2, 'Nama kabupaten minimal 2 karakter').max(100),
+  province: z.string().min(1, 'Pilih provinsi'),
+  regency: z.string().min(1, 'Pilih kabupaten/kota'),
+  district: z.string().min(1, 'Pilih kecamatan'),
+  subdistrict: z.string().min(1, 'Pilih kelurahan/desa'),
   description: z.string().min(20, 'Deskripsi minimal 20 karakter').max(500),
   contactName: z.string().min(3, 'Nama kontak minimal 3 karakter').max(100),
   contactPhone: z.string().min(10, 'Nomor telepon minimal 10 digit').max(15),
@@ -31,17 +38,106 @@ export default function RegisterVillagePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<VillageFormData>({
+  // Address cascading states
+  const [provincesList, setProvincesList] = useState<Region[]>([]);
+  const [regenciesList, setRegenciesList] = useState<Region[]>([]);
+  const [districtsList, setDistrictsList] = useState<Region[]>([]);
+  const [subdistrictsList, setSubdistrictsList] = useState<Region[]>([]);
+
+  const [selectedProvince, setSelectedProvince] = useState('');
+  const [selectedRegency, setSelectedRegency] = useState('');
+  const [selectedDistrict, setSelectedDistrict] = useState('');
+
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<VillageFormData>({
     resolver: zodResolver(villageSchema),
   });
+
+  // Load provinces on mount
+  useEffect(() => {
+    const loadProvinces = async () => {
+      try {
+        const data = await fetchProvinces();
+        setProvincesList(data);
+      } catch (error) {
+        console.error('Error loading provinces:', error);
+      }
+    };
+    loadProvinces();
+  }, []);
+
+  // Load regencies when province changes
+  useEffect(() => {
+    const loadRegencies = async () => {
+      if (selectedProvince) {
+        try {
+          const data = await fetchRegencies(selectedProvince);
+          setRegenciesList(data);
+          // Reset dependent fields
+          setSelectedRegency('');
+          setSelectedDistrict('');
+          setDistrictsList([]);
+          setSubdistrictsList([]);
+          setValue('regency', '');
+          setValue('district', '');
+          setValue('subdistrict', '');
+        } catch (error) {
+          console.error('Error loading regencies:', error);
+        }
+      }
+    };
+    loadRegencies();
+  }, [selectedProvince, setValue]);
+
+  // Load districts when regency changes
+  useEffect(() => {
+    const loadDistricts = async () => {
+      if (selectedRegency) {
+        try {
+          const data = await fetchDistricts(selectedRegency);
+          setDistrictsList(data);
+          // Reset dependent fields
+          setSelectedDistrict('');
+          setSubdistrictsList([]);
+          setValue('district', '');
+          setValue('subdistrict', '');
+        } catch (error) {
+          console.error('Error loading districts:', error);
+        }
+      }
+    };
+    loadDistricts();
+  }, [selectedRegency, setValue]);
+
+  // Load subdistricts when district changes
+  useEffect(() => {
+    const loadSubdistricts = async () => {
+      if (selectedDistrict) {
+        try {
+          const data = await fetchVillages(selectedDistrict);
+          setSubdistrictsList(data);
+          setValue('subdistrict', '');
+        } catch (error) {
+          console.error('Error loading subdistricts:', error);
+        }
+      }
+    };
+    loadSubdistricts();
+  }, [selectedDistrict, setValue]);
 
   const onSubmit = async (data: VillageFormData) => {
     setIsSubmitting(true);
     try {
+      const provinceName = provincesList.find(p => p.code === data.province)?.name || '';
+      const regencyName = regenciesList.find(r => r.code === data.regency)?.name || '';
+      const districtName = districtsList.find(d => d.code === data.district)?.name || '';
+      const subdistrictName = subdistrictsList.find(s => s.code === data.subdistrict)?.name || '';
+
       const { error } = await supabase.from('villages').insert({
         name: data.name.trim(),
-        district: data.district.trim(),
-        regency: data.regency.trim(),
+        province: provinceName,
+        regency: regencyName,
+        district: districtName,
+        subdistrict: subdistrictName,
         description: data.description.trim(),
         contact_name: data.contactName.trim(),
         contact_phone: data.contactPhone.trim(),
@@ -167,30 +263,97 @@ export default function RegisterVillagePage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="district" className="text-xs">Kecamatan *</Label>
-                  <Input
-                    id="district"
-                    placeholder="Nama kecamatan"
-                    {...register('district')}
-                    className="mt-1.5"
-                  />
-                  {errors.district && (
-                    <p className="text-destructive text-xs mt-1">{errors.district.message}</p>
+                  <Label className="text-xs">Provinsi *</Label>
+                  <Select 
+                    onValueChange={(value) => {
+                      setSelectedProvince(value);
+                      setValue('province', value);
+                    }}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Pilih provinsi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {provincesList.map((p) => (
+                        <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.province && (
+                    <p className="text-destructive text-xs mt-1">{errors.province.message}</p>
                   )}
                 </div>
+
                 <div>
-                  <Label htmlFor="regency" className="text-xs">Kabupaten/Kota *</Label>
-                  <Input
-                    id="regency"
-                    placeholder="Nama kabupaten"
-                    {...register('regency')}
-                    className="mt-1.5"
-                  />
+                  <Label className="text-xs">Kabupaten/Kota *</Label>
+                  <Select 
+                    onValueChange={(value) => {
+                      setSelectedRegency(value);
+                      setValue('regency', value);
+                    }}
+                    disabled={!selectedProvince}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder={selectedProvince ? "Pilih kabupaten/kota" : "Pilih provinsi dulu"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {regenciesList.map((r) => (
+                        <SelectItem key={r.code} value={r.code}>{r.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   {errors.regency && (
                     <p className="text-destructive text-xs mt-1">{errors.regency.message}</p>
                   )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Kecamatan *</Label>
+                    <Select 
+                      onValueChange={(value) => {
+                        setSelectedDistrict(value);
+                        setValue('district', value);
+                      }}
+                      disabled={!selectedRegency}
+                    >
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue placeholder="Pilih kecamatan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {districtsList.map((d) => (
+                          <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.district && (
+                      <p className="text-destructive text-xs mt-1">{errors.district.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="text-xs">Kelurahan/Desa *</Label>
+                    <Select 
+                      onValueChange={(value) => {
+                        setValue('subdistrict', value);
+                      }}
+                      disabled={!selectedDistrict}
+                    >
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue placeholder="Pilih kelurahan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subdistrictsList.map((s) => (
+                          <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.subdistrict && (
+                      <p className="text-destructive text-xs mt-1">{errors.subdistrict.message}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
