@@ -6,6 +6,14 @@ interface WhitelabelSettings {
   siteTagline: string;
   logoUrl: string | null;
   faviconUrl: string | null;
+  pwa?: {
+    appName: string;
+    shortName: string;
+    description: string;
+    themeColor: string;
+    backgroundColor: string;
+    icons: { src: string; sizes: string; type: string }[];
+  };
 }
 
 const defaultSettings: WhitelabelSettings = {
@@ -44,25 +52,29 @@ export function useWhitelabelProvider() {
     try {
       const { data, error } = await supabase
         .from('app_settings')
-        .select('key, value')
-        .eq('category', 'whitelabel');
+        .select('key, value, category');
 
       if (error) throw error;
 
       if (data && data.length > 0) {
         const newSettings = { ...defaultSettings };
         data.forEach((item) => {
-          if (item.key === 'site_name' && item.value) {
-            newSettings.siteName = String(item.value);
+          if (item.category === 'whitelabel') {
+            if (item.key === 'site_name' && item.value) {
+              newSettings.siteName = String(item.value);
+            }
+            if (item.key === 'site_tagline' && item.value) {
+              newSettings.siteTagline = String(item.value);
+            }
+            if (item.key === 'logo_url' && item.value) {
+              newSettings.logoUrl = String(item.value);
+            }
+            if (item.key === 'favicon_url' && item.value) {
+              newSettings.faviconUrl = String(item.value);
+            }
           }
-          if (item.key === 'site_tagline' && item.value) {
-            newSettings.siteTagline = String(item.value);
-          }
-          if (item.key === 'logo_url' && item.value) {
-            newSettings.logoUrl = String(item.value);
-          }
-          if (item.key === 'favicon_url' && item.value) {
-            newSettings.faviconUrl = String(item.value);
+          if (item.category === 'pwa' && item.key === 'pwa_config') {
+            newSettings.pwa = item.value as any;
           }
         });
         setSettings(newSettings);
@@ -75,6 +87,30 @@ export function useWhitelabelProvider() {
           const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
           if (link) {
             link.href = newSettings.faviconUrl;
+          }
+        }
+
+        // Update PWA Meta Tags dynamically
+        if (newSettings.pwa) {
+          const pwa = newSettings.pwa;
+          
+          // Theme color
+          let themeMeta = document.querySelector('meta[name="theme-color"]');
+          if (themeMeta) themeMeta.setAttribute('content', pwa.themeColor);
+          
+          // Apple mobile web app title
+          let appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          if (appleTitle) appleTitle.setAttribute('content', pwa.shortName);
+
+          // Update icons
+          if (pwa.icons && pwa.icons.length > 0) {
+            const icon192 = pwa.icons.find(i => i.sizes === '192x192');
+            const icon512 = pwa.icons.find(i => i.sizes === '512x512');
+
+            if (icon192) {
+              const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+              if (appleIcon) appleIcon.setAttribute('href', icon192.src);
+            }
           }
         }
       }

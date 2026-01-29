@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Smartphone, Globe, Bell, Palette, RefreshCw, Image as ImageIcon, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { Save, Smartphone, Globe, Bell, Palette, RefreshCw, Image as ImageIcon, CheckCircle2, AlertCircle, Info, Upload, Loader2 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +51,7 @@ export default function AdminPWASettingsPage() {
   const [settings, setSettings] = useState<PWASettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -100,6 +101,49 @@ export default function AdminPWASettingsPage() {
 
   const handleChange = (key: keyof PWASettings, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleIconUpload = async (event: React.ChangeEvent<HTMLInputElement>, size: string) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.includes('png') && !file.type.includes('jpeg')) {
+      toast.error('Hanya file PNG atau JPEG yang diperbolehkan');
+      return;
+    }
+
+    setUploading(size);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `pwa-icon-${size}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `pwa/${fileName}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from('public-assets')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('public-assets')
+        .getPublicUrl(filePath);
+
+      const updatedIcons = settings.icons.map(icon => 
+        icon.sizes === size ? { ...icon, src: publicUrl, type: file.type } : icon
+      );
+
+      setSettings(prev => ({ ...prev, icons: updatedIcons }));
+      toast.success(`Ikon ${size} berhasil diunggah`);
+    } catch (error: any) {
+      console.error('Error uploading icon:', error);
+      toast.error('Gagal mengunggah ikon: ' + error.message);
+    } finally {
+      setUploading(null);
+    }
   };
 
   if (loading) {
@@ -223,20 +267,49 @@ export default function AdminPWASettingsPage() {
               <CardContent className="space-y-6">
                 <div className="grid gap-6 md:grid-cols-2">
                   {settings.icons.map((icon, index) => (
-                    <div key={index} className="flex items-start gap-4 p-4 border rounded-lg bg-card">
-                      <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center overflow-hidden border">
-                        <img src={icon.src} alt={`Icon ${icon.sizes}`} className="w-full h-full object-contain" />
+                    <div key={index} className="flex flex-col gap-4 p-4 border rounded-lg bg-card">
+                      <div className="flex items-start gap-4">
+                        <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center overflow-hidden border shrink-0">
+                          {uploading === icon.sizes ? (
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          ) : (
+                            <img src={icon.src} alt={`Icon ${icon.sizes}`} className="w-full h-full object-contain" />
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <Label className="font-bold">{icon.sizes}</Label>
+                            <Badge variant="outline" className="text-[10px]">{icon.type}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{icon.src}</p>
+                          <div className="flex items-center gap-1 text-xs text-green-600">
+                            <CheckCircle2 className="h-3 w-3" />
+                            <span>Tervalidasi</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="font-bold">{icon.sizes}</Label>
-                          <Badge variant="outline" className="text-[10px]">{icon.type}</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">{icon.src}</p>
-                        <div className="flex items-center gap-1 text-xs text-green-600">
-                          <CheckCircle2 className="h-3 w-3" />
-                          <span>Tervalidasi</span>
-                        </div>
+                      
+                      <div className="relative">
+                        <Input
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          onChange={(e) => handleIconUpload(e, icon.sizes)}
+                          className="hidden"
+                          id={`icon-upload-${icon.sizes}`}
+                          disabled={uploading !== null}
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="w-full"
+                          asChild
+                          disabled={uploading !== null}
+                        >
+                          <label htmlFor={`icon-upload-${icon.sizes}`} className="cursor-pointer">
+                            <Upload className="h-4 w-4 mr-2" />
+                            Ganti Ikon {icon.sizes}
+                          </label>
+                        </Button>
                       </div>
                     </div>
                   ))}
