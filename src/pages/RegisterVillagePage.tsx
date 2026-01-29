@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { MapPin, User, Phone, Mail, ArrowLeft, CheckCircle, Building, MapPinned } from 'lucide-react';
+import { MapPin, User, Phone, Mail, ArrowLeft, CheckCircle, Building, MapPinned, FileText } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,6 @@ export default function RegisterVillagePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Address cascading states
   const [provincesList, setProvincesList] = useState<Region[]>([]);
   const [regenciesList, setRegenciesList] = useState<Region[]>([]);
   const [districtsList, setDistrictsList] = useState<Region[]>([]);
@@ -52,7 +51,6 @@ export default function RegisterVillagePage() {
     resolver: zodResolver(villageSchema),
   });
 
-  // Load provinces on mount
   useEffect(() => {
     const loadProvinces = async () => {
       try {
@@ -65,14 +63,12 @@ export default function RegisterVillagePage() {
     loadProvinces();
   }, []);
 
-  // Load regencies when province changes
   useEffect(() => {
     const loadRegencies = async () => {
       if (selectedProvince) {
         try {
           const data = await fetchRegencies(selectedProvince);
           setRegenciesList(data);
-          // Reset dependent fields
           setSelectedRegency('');
           setSelectedDistrict('');
           setDistrictsList([]);
@@ -88,14 +84,12 @@ export default function RegisterVillagePage() {
     loadRegencies();
   }, [selectedProvince, setValue]);
 
-  // Load districts when regency changes
   useEffect(() => {
     const loadDistricts = async () => {
       if (selectedRegency) {
         try {
           const data = await fetchDistricts(selectedRegency);
           setDistrictsList(data);
-          // Reset dependent fields
           setSelectedDistrict('');
           setSubdistrictsList([]);
           setValue('district', '');
@@ -108,7 +102,6 @@ export default function RegisterVillagePage() {
     loadDistricts();
   }, [selectedRegency, setValue]);
 
-  // Load subdistricts when district changes
   useEffect(() => {
     const loadSubdistricts = async () => {
       if (selectedDistrict) {
@@ -147,7 +140,6 @@ export default function RegisterVillagePage() {
       });
 
       if (error) throw error;
-
       setIsSuccess(true);
       toast.success('Pendaftaran desa berhasil dikirim!');
     } catch (error: any) {
@@ -174,10 +166,7 @@ export default function RegisterVillagePage() {
             Data desa wisata Anda telah kami terima dan sedang dalam proses verifikasi. 
             Kami akan menghubungi Anda melalui email atau nomor WhatsApp yang terdaftar.
           </p>
-          <Button 
-            onClick={() => navigate('/')} 
-            className="w-full rounded-xl py-6"
-          >
+          <Button onClick={() => navigate('/')} className="w-full rounded-xl py-6">
             Kembali ke Beranda
           </Button>
         </motion.div>
@@ -191,7 +180,6 @@ export default function RegisterVillagePage() {
       
       <main className="p-4 max-w-lg mx-auto">
         <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-          {/* Header Section */}
           <div className="flex items-center gap-3 mb-8">
             <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
               <Building className="h-6 w-6 text-primary" />
@@ -202,7 +190,6 @@ export default function RegisterVillagePage() {
             </div>
           </div>
 
-          {/* Info Card */}
           <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10 mb-8">
             <div className="flex items-start gap-3">
               <CheckCircle className="h-5 w-5 text-primary mt-0.5" />
@@ -219,135 +206,62 @@ export default function RegisterVillagePage() {
             {/* Village Info Section */}
             <div className="space-y-5">
               <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-primary" />
+                <FileText className="h-4 w-4 text-primary" />
                 Informasi Desa
               </h2>
-
               <div>
                 <Label htmlFor="name" className="text-xs">Nama Desa Wisata *</Label>
-                <Input
-                  id="name"
-                  placeholder="Contoh: Desa Wisata Sukamaju"
-                  {...register('name')}
-                  className="mt-1.5"
-                />
-                {errors.name && (
-                  <p className="text-destructive text-xs mt-1">{errors.name.message}</p>
-                )}
+                <Input id="name" placeholder="Contoh: Desa Wisata Sukamaju" {...register('name')} className="mt-1.5" />
+                {errors.name && <p className="text-destructive text-xs mt-1">{errors.name.message}</p>}
               </div>
-
-              <div className="space-y-4">
-                <h2 className="font-semibold text-sm text-foreground flex items-center gap-2 pt-2">
-                  <MapPinned className="h-4 w-4 text-primary" />
-                  Alamat Lengkap
-                </h2>
-
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <Label className="text-xs">Provinsi *</Label>
-                    <Select 
-                      onValueChange={(value) => {
-                        setSelectedProvince(value);
-                        setValue('province', value);
-                      }}
-                    >
-                      <SelectTrigger className="mt-1.5">
-                        <SelectValue placeholder="Pilih provinsi" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {provincesList.map((p) => (
-                          <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.province && (
-                      <p className="text-destructive text-xs mt-1">{errors.province.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label className="text-xs">Kabupaten/Kota *</Label>
-                    <Select 
-                      onValueChange={(value) => {
-                        setSelectedRegency(value);
-                        setValue('regency', value);
-                      }}
-                      disabled={!selectedProvince}
-                    >
-                      <SelectTrigger className="mt-1.5">
-                        <SelectValue placeholder={selectedProvince ? "Pilih kabupaten/kota" : "Pilih provinsi dulu"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {regenciesList.map((r) => (
-                          <SelectItem key={r.code} value={r.code}>{r.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.regency && (
-                      <p className="text-destructive text-xs mt-1">{errors.regency.message}</p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Kecamatan *</Label>
-                      <Select 
-                        onValueChange={(value) => {
-                          setSelectedDistrict(value);
-                          setValue('district', value);
-                        }}
-                        disabled={!selectedRegency}
-                      >
-                        <SelectTrigger className="mt-1.5">
-                          <SelectValue placeholder="Pilih kecamatan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {districtsList.map((d) => (
-                            <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors.district && (
-                        <p className="text-destructive text-xs mt-1">{errors.district.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label className="text-xs">Kelurahan/Desa *</Label>
-                      <Select 
-                        onValueChange={(value) => {
-                          setValue('subdistrict', value);
-                        }}
-                        disabled={!selectedDistrict}
-                      >
-                        <SelectTrigger className="mt-1.5">
-                          <SelectValue placeholder="Pilih kelurahan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {subdistrictsList.map((s) => (
-                            <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors.subdistrict && (
-                        <p className="text-destructive text-xs mt-1">{errors.subdistrict.message}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <div>
                 <Label htmlFor="description" className="text-xs">Deskripsi Desa *</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Ceritakan tentang potensi wisata, budaya, dan keunikan desa Anda..."
-                  {...register('description')}
-                  className="mt-1.5 min-h-[100px]"
-                />
-                {errors.description && (
-                  <p className="text-destructive text-xs mt-1">{errors.description.message}</p>
-                )}
+                <Textarea id="description" placeholder="Ceritakan tentang potensi wisata, budaya, dan keunikan desa Anda..." {...register('description')} className="mt-1.5 min-h-[100px]" />
+                {errors.description && <p className="text-destructive text-xs mt-1">{errors.description.message}</p>}
+              </div>
+            </div>
+
+            {/* Address Section */}
+            <div className="space-y-5 pt-4 border-t border-border">
+              <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
+                <MapPinned className="h-4 w-4 text-primary" />
+                Alamat Lengkap
+              </h2>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <Label className="text-xs">Provinsi *</Label>
+                  <Select onValueChange={(v) => { setSelectedProvince(v); setValue('province', v); }}>
+                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pilih provinsi" /></SelectTrigger>
+                    <SelectContent>{provincesList.map((p) => <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {errors.province && <p className="text-destructive text-xs mt-1">{errors.province.message}</p>}
+                </div>
+                <div>
+                  <Label className="text-xs">Kabupaten/Kota *</Label>
+                  <Select onValueChange={(v) => { setSelectedRegency(v); setValue('regency', v); }} disabled={!selectedProvince}>
+                    <SelectTrigger className="mt-1.5"><SelectValue placeholder={selectedProvince ? "Pilih kabupaten/kota" : "Pilih provinsi dulu"} /></SelectTrigger>
+                    <SelectContent>{regenciesList.map((r) => <SelectItem key={r.code} value={r.code}>{r.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {errors.regency && <p className="text-destructive text-xs mt-1">{errors.regency.message}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Kecamatan *</Label>
+                    <Select onValueChange={(v) => { setSelectedDistrict(v); setValue('district', v); }} disabled={!selectedRegency}>
+                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pilih kecamatan" /></SelectTrigger>
+                      <SelectContent>{districtsList.map((d) => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {errors.district && <p className="text-destructive text-xs mt-1">{errors.district.message}</p>}
+                  </div>
+                  <div>
+                    <Label className="text-xs">Kelurahan/Desa *</Label>
+                    <Select onValueChange={(v) => setValue('subdistrict', v)} disabled={!selectedDistrict}>
+                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pilih kelurahan" /></SelectTrigger>
+                      <SelectContent>{subdistrictsList.map((s) => <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    {errors.subdistrict && <p className="text-destructive text-xs mt-1">{errors.subdistrict.message}</p>}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -357,82 +271,40 @@ export default function RegisterVillagePage() {
                 <User className="h-4 w-4 text-primary" />
                 Kontak Penanggung Jawab
               </h2>
-
               <div>
                 <Label htmlFor="contactName" className="text-xs">Nama Lengkap *</Label>
                 <div className="relative mt-1.5">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="contactName"
-                    placeholder="Nama penanggung jawab"
-                    {...register('contactName')}
-                    className="pl-10"
-                  />
+                  <Input id="contactName" placeholder="Nama penanggung jawab" {...register('contactName')} className="pl-10" />
                 </div>
-                {errors.contactName && (
-                  <p className="text-destructive text-xs mt-1">{errors.contactName.message}</p>
-                )}
+                {errors.contactName && <p className="text-destructive text-xs mt-1">{errors.contactName.message}</p>}
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="contactPhone" className="text-xs">Nomor WhatsApp *</Label>
                   <div className="relative mt-1.5">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="contactPhone"
-                      placeholder="08xxxxxxxxxx"
-                      {...register('contactPhone')}
-                      className="pl-10"
-                    />
+                    <Input id="contactPhone" placeholder="08xxxxxxxxxx" {...register('contactPhone')} className="pl-10" />
                   </div>
-                  {errors.contactPhone && (
-                    <p className="text-destructive text-xs mt-1">{errors.contactPhone.message}</p>
-                  )}
+                  {errors.contactPhone && <p className="text-destructive text-xs mt-1">{errors.contactPhone.message}</p>}
                 </div>
-
                 <div>
                   <Label htmlFor="contactEmail" className="text-xs">Email *</Label>
                   <div className="relative mt-1.5">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="contactEmail"
-                      type="email"
-                      placeholder="email@contoh.com"
-                      {...register('contactEmail')}
-                      className="pl-10"
-                    />
+                    <Input id="contactEmail" type="email" placeholder="email@contoh.com" {...register('contactEmail')} className="pl-10" />
                   </div>
-                  {errors.contactEmail && (
-                    <p className="text-destructive text-xs mt-1">{errors.contactEmail.message}</p>
-                  )}
+                  {errors.contactEmail && <p className="text-destructive text-xs mt-1">{errors.contactEmail.message}</p>}
                 </div>
               </div>
             </div>
 
-            {/* Submit Button */}
-            <Button 
-              type="submit" 
-              className="w-full rounded-xl py-6 mt-4"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                  <span>Mengirim...</span>
-                </div>
-              ) : (
-                'Kirim Pendaftaran'
-              )}
+            <Button type="submit" className="w-full rounded-xl py-6 mt-4" disabled={isSubmitting}>
+              {isSubmitting ? <div className="flex items-center gap-2"><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /><span>Mengirim...</span></div> : 'Kirim Pendaftaran'}
             </Button>
-
-            <p className="text-[10px] text-muted-foreground text-center">
-              Dengan mendaftar, Anda menyetujui syarat dan ketentuan yang berlaku di platform UMKM Desa Wisata.
-            </p>
           </form>
         </div>
       </main>
-      
       <BottomNav />
     </div>
   );
