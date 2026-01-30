@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Sparkles, Flame, TrendingUp } from 'lucide-react';
+import { ChevronRight, Sparkles, Flame, TrendingUp, MapPin } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { FloatingCartButton } from '@/components/layout/FloatingCartButton';
@@ -17,6 +17,7 @@ import {
 } from '@/lib/api';
 import { fetchBannerPromotions } from '@/lib/promotions';
 import { useHomepageLayout } from '@/hooks/useHomepageLayout';
+import { useUserLocation, sortByDistance } from '@/hooks/useUserLocation';
 import type { Product, Village, Tourism } from '@/types';
 
 const Index = () => {
@@ -32,6 +33,8 @@ const Index = () => {
     isCategoryVisible, 
     loading: layoutLoading 
   } = useHomepageLayout();
+
+  const { location: userLocation, loading: locationLoading } = useUserLocation();
 
   useEffect(() => {
     async function loadData() {
@@ -64,9 +67,25 @@ const Index = () => {
     loadData();
   }, []);
 
-  const promoProducts = products.filter(p => p.isPromo);
-  // Sort tourism by view count for "popular" effect
-  const popularTourism = [...tourismSpots].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0));
+  // Sort data by proximity to user location
+  const sortedProducts = useMemo(() => {
+    if (!userLocation) return products;
+    return sortByDistance(products, userLocation.lat, userLocation.lng);
+  }, [products, userLocation]);
+
+  const sortedVillages = useMemo(() => {
+    if (!userLocation) return villages;
+    return sortByDistance(villages, userLocation.lat, userLocation.lng);
+  }, [villages, userLocation]);
+
+  const sortedTourism = useMemo(() => {
+    if (!userLocation) return tourismSpots;
+    return sortByDistance(tourismSpots, userLocation.lat, userLocation.lng);
+  }, [tourismSpots, userLocation]);
+
+  const promoProducts = sortedProducts.filter(p => p.isPromo);
+  // Sort tourism by proximity first, then by view count
+  const popularTourism = sortedTourism;
   
   // Filter categories based on admin settings
   const visibleCategories = categories.filter(cat => isCategoryVisible(cat.id));
@@ -99,8 +118,11 @@ const Index = () => {
                   <Flame className="h-3.5 w-3.5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-sm text-foreground">Wisata Populer</h2>
-                  <p className="text-[9px] text-muted-foreground">Destinasi favorit pengunjung</p>
+                  <h2 className="font-bold text-sm text-foreground">Wisata Terdekat</h2>
+                  <p className="text-[9px] text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-2.5 w-2.5" />
+                    {userLocation?.source === 'gps' ? 'Berdasarkan lokasi Anda' : 'Sekitar Anda'}
+                  </p>
                 </div>
               </div>
               <Link 
@@ -138,19 +160,22 @@ const Index = () => {
         ) : null;
       
       case 'recommendations':
-        return products.length > 0 ? (
+        return sortedProducts.length > 0 ? (
           <section className="mt-6 px-5">
             <div className="flex items-center gap-2 mb-4 sticky top-0 z-20 bg-background/95 backdrop-blur py-3 -mx-5 px-5 border-b border-border">
               <div className="w-7 h-7 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center shadow-sm">
                 <TrendingUp className="h-3.5 w-3.5 text-primary-foreground" />
               </div>
               <div>
-                <h2 className="font-bold text-sm text-foreground">Rekomendasi Pilihan</h2>
-                <p className="text-[9px] text-muted-foreground">Produk terbaik dari desa</p>
+                <h2 className="font-bold text-sm text-foreground">Produk Terdekat</h2>
+                <p className="text-[9px] text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-2.5 w-2.5" />
+                  {userLocation?.source === 'gps' ? 'Berdasarkan lokasi Anda' : 'Sekitar Anda'}
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 pb-4">
-              {products.map((product, idx) => (
+              {sortedProducts.map((product, idx) => (
                 <ProductCard 
                   key={product.id} 
                   product={product} 
@@ -163,7 +188,7 @@ const Index = () => {
         ) : null;
       
       case 'villages':
-        return villages.length > 0 ? (
+        return sortedVillages.length > 0 ? (
           <section className="mt-4 px-5 pb-6">
             <div className="flex justify-between items-center mb-3">
               <div className="flex items-center gap-2">
@@ -171,8 +196,11 @@ const Index = () => {
                   <span className="text-sm">🏘️</span>
                 </div>
                 <div>
-                  <h2 className="font-bold text-sm text-foreground">Jelajahi Desa</h2>
-                  <p className="text-[9px] text-muted-foreground">Temukan desa wisata menarik</p>
+                  <h2 className="font-bold text-sm text-foreground">Desa Terdekat</h2>
+                  <p className="text-[9px] text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-2.5 w-2.5" />
+                    {userLocation?.source === 'gps' ? 'Berdasarkan lokasi Anda' : 'Sekitar Anda'}
+                  </p>
                 </div>
               </div>
               <Link 
@@ -184,7 +212,7 @@ const Index = () => {
               </Link>
             </div>
             <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
-              {villages.map((village) => (
+              {sortedVillages.map((village) => (
                 <VillageCard key={village.id} village={village} />
               ))}
             </div>

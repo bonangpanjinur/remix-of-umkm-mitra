@@ -63,7 +63,7 @@ export async function checkMerchantHasActiveQuota(merchantId: string): Promise<b
   return data.transaction_quota > data.used_quota;
 }
 
-// Fetch products from database (include all, with availability status)
+// Fetch products from database (include all, with availability status and location)
 export async function fetchProducts(): Promise<Product[]> {
   // First get merchants with active quota
   const merchantsWithQuota = await getMerchantsWithActiveQuota();
@@ -78,8 +78,12 @@ export async function fetchProducts(): Promise<Product[]> {
         is_open,
         open_time,
         close_time,
+        location_lat,
+        location_lng,
         villages (
-          name
+          name,
+          location_lat,
+          location_lng
         )
       )
     `)
@@ -103,6 +107,14 @@ export async function fetchProducts(): Promise<Product[]> {
     }
     
     const isAvailable = hasQuota && isMerchantOpen;
+
+    // Get location - prefer merchant location, fallback to village location
+    const locationLat = merchant?.location_lat 
+      ? Number(merchant.location_lat) 
+      : (merchant?.villages?.location_lat ? Number(merchant.villages.location_lat) : null);
+    const locationLng = merchant?.location_lng 
+      ? Number(merchant.location_lng) 
+      : (merchant?.villages?.location_lng ? Number(merchant.villages.location_lng) : null);
     
     return {
       id: p.id,
@@ -120,6 +132,8 @@ export async function fetchProducts(): Promise<Product[]> {
       isAvailable,
       isMerchantOpen,
       hasQuota,
+      locationLat,
+      locationLng,
     };
   });
 }
@@ -228,6 +242,8 @@ export async function fetchVillages(): Promise<Village[]> {
     description: v.description || '',
     image: villageImages[v.id] || v.image_url || villageBojong,
     isActive: v.is_active,
+    locationLat: v.location_lat ? Number(v.location_lat) : null,
+    locationLng: v.location_lng ? Number(v.location_lng) : null,
   }));
 }
 

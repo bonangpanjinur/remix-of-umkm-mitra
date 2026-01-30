@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { MapPin } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { ProductCard } from '@/components/ProductCard';
 import { fetchProducts, categories } from '@/lib/api';
+import { useUserLocation, sortByDistance } from '@/hooks/useUserLocation';
 import { cn } from '@/lib/utils';
 import type { Product } from '@/types';
 
@@ -16,6 +18,7 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState(categoryParam);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const { location: userLocation } = useUserLocation();
 
   useEffect(() => {
     async function loadData() {
@@ -31,7 +34,13 @@ export default function ProductsPage() {
     loadData();
   }, []);
 
-  const filteredProducts = products.filter(product => {
+  // Sort by proximity first
+  const sortedProducts = useMemo(() => {
+    if (!userLocation) return products;
+    return sortByDistance(products, userLocation.lat, userLocation.lng);
+  }, [products, userLocation]);
+
+  const filteredProducts = sortedProducts.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.merchantName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
@@ -89,6 +98,18 @@ export default function ProductsPage() {
           ))}
         </div>
       </div>
+
+      {/* Location indicator */}
+      {userLocation && !loading && (
+        <div className="px-5 py-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-3 py-2 rounded-lg">
+            <MapPin className="h-3.5 w-3.5 text-primary" />
+            <span>
+              Diurutkan berdasarkan {userLocation.source === 'gps' ? 'lokasi GPS Anda' : 'lokasi terdekat'}
+            </span>
+          </div>
+        </div>
+      )}
       
       <div className="flex-1 overflow-y-auto pb-24">
         <motion.div 

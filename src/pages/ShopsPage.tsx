@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ShopFilterSheet, type ShopFilters } from '@/components/shop/ShopFilterSheet';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserLocation, calculateDistance } from '@/hooks/useUserLocation';
 
 interface ShopData {
   id: string;
@@ -24,6 +25,8 @@ interface ShopData {
   villageName: string | null;
   productCount: number;
   categories: string[];
+  locationLat: number | null;
+  locationLng: number | null;
 }
 
 export default function ShopsPage() {
@@ -37,16 +40,18 @@ export default function ShopsPage() {
     categories: [],
     isOpen: null,
   });
+  const { location: userLocation } = useUserLocation();
 
   useEffect(() => {
     async function fetchShops() {
       try {
-        // Fetch merchants with their products
+        // Fetch merchants with their products and location
         const { data: merchantsData, error } = await supabase
           .from('merchants')
           .select(`
             id, name, address, phone, rating_avg, rating_count, is_open, badge, image_url,
-            village_id, villages(name),
+            village_id, location_lat, location_lng,
+            villages(name, location_lat, location_lng),
             products(id, category)
           `)
           .eq('status', 'ACTIVE')
@@ -57,6 +62,15 @@ export default function ShopsPage() {
         const mappedShops: ShopData[] = (merchantsData || []).map((m) => {
           const products = m.products || [];
           const categories = [...new Set(products.map((p: any) => p.category))];
+          const village = m.villages as any;
+          
+          // Get location - prefer merchant, fallback to village
+          const locationLat = m.location_lat 
+            ? Number(m.location_lat) 
+            : (village?.location_lat ? Number(village.location_lat) : null);
+          const locationLng = m.location_lng 
+            ? Number(m.location_lng) 
+            : (village?.location_lng ? Number(village.location_lng) : null);
           
           return {
             id: m.id,
@@ -69,9 +83,11 @@ export default function ShopsPage() {
             badge: m.badge,
             imageUrl: m.image_url,
             villageId: m.village_id,
-            villageName: (m.villages as any)?.name || null,
+            villageName: village?.name || null,
             productCount: products.length,
             categories,
+            locationLat,
+            locationLng,
           };
         });
 
@@ -96,8 +112,20 @@ export default function ShopsPage() {
     setSearchParams(searchParams);
   };
 
-  const filteredShops = useMemo(() => {
-    return shops.filter((shop) => {
+  // Sort shops by proximity first, then filter
+  const sortedAndFilteredShops = useMemo(() => {
+    // First sort by distance
+    let sorted = [...shops];
+    if (userLocation) {
+      sorted.sort((a, b) => {
+        const distA = calculateDistance(userLocation.lat, userLocation.lng, a.locationLat, a.locationLng);
+        const distB = calculateDistance(userLocation.lat, userLocation.lng, b.locationLat, b.locationLng);
+        return distA - distB;
+      });
+    }
+
+    // Then filter
+    return sorted.filter((shop) => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -130,7 +158,7 @@ export default function ShopsPage() {
 
       return true;
     });
-  }, [shops, searchQuery, filters]);
+  }, [shops, searchQuery, filters, userLocation]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -196,12 +224,20 @@ export default function ShopsPage() {
         )}
       </div>
 
-      {/* Results Count */}
-      <div className="px-4 py-2 text-sm text-muted-foreground flex items-center gap-2">
-        <Store className="h-4 w-4" />
-        <span>
-          {loading ? 'Memuat...' : `${filteredShops.length} toko ditemukan`}
-        </span>
+      {/* Results Count with Location Indicator */}
+      <div className="px-4 py-2 text-sm text-muted-foreground flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Store className="h-4 w-4" />
+          <span>
+            {loading ? 'Memuat...' : `${sortedAndFilteredShops.length} toko ditemukan`}
+          </span>
+        </div>
+        {userLocation && !loading && (
+          <div className="flex items-center gap-1 text-xs">
+            <MapPin className="h-3 w-3 text-primary" />
+            <span>{userLocation.source === 'gps' ? 'GPS' : 'Terdekat'}</span>
+          </div>
+        )}
       </div>
 
       {/* Shop List */}
@@ -215,7 +251,7 @@ export default function ShopsPage() {
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
-          ) : filteredShops.length === 0 ? (
+          ) : sortedAndFilteredShops.length === 0 ? (
             <div className="text-center py-12">
               <Store className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
               <p className="text-muted-foreground">Tidak ada toko ditemukan</p>
@@ -237,7 +273,7 @@ export default function ShopsPage() {
               )}
             </div>
           ) : (
-            filteredShops.map((shop, idx) => (
+            sortedAndFilteredShops.map((shop, idx) => (
               <motion.div
                 key={shop.id}
                 initial={{ opacity: 0, y: 10 }}

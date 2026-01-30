@@ -749,6 +749,8 @@ export type Database = {
           image_url: string | null
           is_open: boolean
           is_verified: boolean | null
+          location_lat: number | null
+          location_lng: number | null
           name: string
           open_time: string | null
           order_mode: string
@@ -793,6 +795,8 @@ export type Database = {
           image_url?: string | null
           is_open?: boolean
           is_verified?: boolean | null
+          location_lat?: number | null
+          location_lng?: number | null
           name: string
           open_time?: string | null
           order_mode?: string
@@ -837,6 +841,8 @@ export type Database = {
           image_url?: string | null
           is_open?: boolean
           is_verified?: boolean | null
+          location_lat?: number | null
+          location_lng?: number | null
           name?: string
           open_time?: string | null
           order_mode?: string
@@ -2200,6 +2206,8 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          location_lat: number | null
+          location_lng: number | null
           name: string
           regency: string
           registered_at: string | null
@@ -2219,6 +2227,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          location_lat?: number | null
+          location_lng?: number | null
           name: string
           regency: string
           registered_at?: string | null
@@ -2238,6 +2248,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          location_lat?: number | null
+          location_lng?: number | null
           name?: string
           regency?: string
           registered_at?: string | null

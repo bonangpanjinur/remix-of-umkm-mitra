@@ -14,6 +14,9 @@ export interface Village {
   contactName?: string;
   contactPhone?: string;
   contactEmail?: string;
+  // Location coordinates
+  locationLat?: number | null;
+  locationLng?: number | null;
 }
 
 export interface Merchant {
@@ -64,6 +67,9 @@ export interface Product {
   isAvailable?: boolean;
   isMerchantOpen?: boolean;
   hasQuota?: boolean;
+  // Location coordinates (from merchant/village)
+  locationLat?: number | null;
+  locationLng?: number | null;
 }
 
 export interface Tourism {
