@@ -314,3 +314,16 @@ export async function getSettingByKey(key: string): Promise<AppSetting | null> {
     updatedAt: data.updated_at,
   };
 }
+
+export async function deleteMerchant(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('merchants')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting merchant:', error);
+    return false;
+  }
+  return true;
+}

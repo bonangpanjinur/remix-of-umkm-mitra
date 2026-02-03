@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Store, MapPin, Phone, Clock, Star, Package, 
   ShoppingCart, Check, X, Edit, MoreHorizontal, Tag, Users,
-  Calendar, CreditCard, TrendingUp, Plus
+  Calendar, CreditCard, TrendingUp, Plus, Trash2
 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { approveMerchant, rejectMerchant } from '@/lib/adminApi';
+import { approveMerchant, rejectMerchant, deleteMerchant } from '@/lib/adminApi';
 import { MerchantEditDialog } from '@/components/admin/MerchantEditDialog';
 import { AssignPackageDialog } from '@/components/admin/AssignPackageDialog';
 
@@ -52,6 +52,9 @@ interface MerchantDetail {
   total_withdrawn: number | null;
   trade_group: string | null;
   verifikator_code: string | null;
+  badge: string | null;
+  order_mode: string;
+  is_verified: boolean | null;
   villages: { name: string } | null;
 }
 
@@ -201,6 +204,19 @@ export default function AdminMerchantDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!confirm('Apakah Anda yakin ingin menghapus merchant ini? Semua data terkait akan ikut terhapus.')) return;
+    
+    const success = await deleteMerchant(id);
+    if (success) {
+      toast.success('Merchant berhasil dihapus');
+      navigate('/admin/merchants');
+    } else {
+      toast.error('Gagal menghapus merchant');
+    }
+  };
+
   const getStatusBadge = (status: string, regStatus: string) => {
     if (regStatus === 'PENDING') {
       return <Badge variant="warning">Menunggu Verifikasi</Badge>;
@@ -287,6 +303,11 @@ export default function AdminMerchantDetailPage() {
               <DropdownMenuItem onClick={() => setPackageDialogOpen(true)}>
                 <Package className="h-4 w-4 mr-2" />
                 Tambah Paket Transaksi
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Hapus Merchant
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -553,17 +574,25 @@ export default function AdminMerchantDetailPage() {
       <MerchantEditDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        merchantId={id || ''}
+        merchantId={merchant.id}
         initialData={{
           name: merchant.name,
           phone: merchant.phone,
           address: merchant.address,
+          province: merchant.province,
+          city: merchant.city,
+          district: merchant.district,
+          subdistrict: merchant.subdistrict,
           open_time: merchant.open_time,
           close_time: merchant.close_time,
           business_category: merchant.business_category,
           business_description: merchant.business_description,
           is_open: merchant.is_open,
           status: merchant.status,
+          badge: merchant.badge,
+          order_mode: merchant.order_mode,
+          is_verified: merchant.is_verified,
+          image_url: merchant.image_url,
         }}
         onSuccess={fetchMerchantData}
       />

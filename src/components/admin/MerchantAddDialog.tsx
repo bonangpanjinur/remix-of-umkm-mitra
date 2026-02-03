@@ -92,6 +92,10 @@ export function MerchantAddDialog({
     status: 'ACTIVE',
     registration_status: 'APPROVED',
     village_id: '', // Linked village ID if exists
+    badge: 'none',
+    order_mode: 'ADMIN_ASSISTED',
+    is_verified: false,
+    image_url: '',
   });
 
   // Load provinces on dialog open
@@ -289,7 +293,10 @@ export function MerchantAddDialog({
           district: formData.district_name,
           subdistrict: formData.village_name,
           registered_at: new Date().toISOString(),
-          order_mode: 'ADMIN_ASSISTED',
+          order_mode: formData.order_mode,
+          badge: formData.badge === 'none' ? null : formData.badge,
+          is_verified: formData.is_verified,
+          image_url: formData.image_url || null,
         });
 
       if (error) throw error;
@@ -342,6 +349,62 @@ export function MerchantAddDialog({
           {/* Basic Information */}
           <div className="border-b pb-4">
             <h3 className="font-semibold text-sm mb-3">Informasi Dasar</h3>
+            
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="space-y-2">
+                <Label>URL Gambar Merchant</Label>
+                <Input
+                  value={formData.image_url}
+                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Mode Pesanan</Label>
+                <Select
+                  value={formData.order_mode}
+                  onValueChange={(v) => setFormData({ ...formData, order_mode: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ADMIN_ASSISTED">Dibantu Admin</SelectItem>
+                    <SelectItem value="SELF">Mandiri</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="space-y-2">
+                <Label>Badge Merchant</Label>
+                <Select
+                  value={formData.badge}
+                  onValueChange={(v) => setFormData({ ...formData, badge: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Tanpa Badge</SelectItem>
+                    <SelectItem value="VERIFIED">Verified</SelectItem>
+                    <SelectItem value="POPULAR">Popular</SelectItem>
+                    <SelectItem value="NEW">New</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-4 pt-8">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={formData.is_verified}
+                    onCheckedChange={(v) => setFormData({ ...formData, is_verified: v })}
+                  />
+                  <Label>Terverifikasi</Label>
+                </div>
+              </div>
+            </div>
+
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

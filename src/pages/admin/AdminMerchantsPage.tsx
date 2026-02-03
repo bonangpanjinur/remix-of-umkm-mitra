@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Store, Eye, Check, X, MoreHorizontal, Plus } from 'lucide-react';
+import { Store, Eye, Check, X, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -10,10 +10,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { approveMerchant, rejectMerchant } from '@/lib/adminApi';
+import { approveMerchant, rejectMerchant, deleteMerchant } from '@/lib/adminApi';
 import { MerchantAddDialog } from '@/components/admin/MerchantAddDialog';
 
 interface MerchantRow {
@@ -76,6 +77,18 @@ export default function AdminMerchantsPage() {
       fetchMerchants();
     } else {
       toast.error('Gagal menolak merchant');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus merchant ini? Semua data terkait akan ikut terhapus.')) return;
+    
+    const success = await deleteMerchant(id);
+    if (success) {
+      toast.success('Merchant berhasil dihapus');
+      fetchMerchants();
+    } else {
+      toast.error('Gagal menghapus merchant');
     }
   };
 
@@ -158,6 +171,11 @@ export default function AdminMerchantsPage() {
                 </DropdownMenuItem>
               </>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => handleDelete(item.id)} className="text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Hapus Merchant
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
