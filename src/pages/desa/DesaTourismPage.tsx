@@ -103,25 +103,25 @@ export default function DesaTourismPage() {
       if (!user) return;
 
       try {
-        // Get village
-        const { data: villages } = await supabase
-          .from('villages')
-          .select('id')
-          .eq('registration_status', 'APPROVED')
-          .limit(1);
+        // Check user's village assignment via user_villages table
+        const { data: userVillage } = await supabase
+          .from('user_villages')
+          .select('village_id')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-        if (!villages || villages.length === 0) {
+        if (!userVillage) {
           setLoading(false);
           return;
         }
 
-        const villageData = villages[0];
-        setVillageId(villageData.id);
+        const currentVillageId = userVillage.village_id;
+        setVillageId(currentVillageId);
 
         const { data, error } = await supabase
           .from('tourism')
           .select('*')
-          .eq('village_id', villageData.id)
+          .eq('village_id', currentVillageId)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
