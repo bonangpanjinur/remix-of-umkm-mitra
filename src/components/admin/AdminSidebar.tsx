@@ -19,10 +19,8 @@ import {
   DollarSign,
   Image,
   Bell,
-  Smartphone,
   Shield,
   Database,
-  Globe,
   Tags,
   Clock,
   Wallet
@@ -70,10 +68,8 @@ export function AdminSidebar({ pendingMerchants = 0, pendingVillages = 0, pendin
     { label: 'Promosi', href: '/admin/promotions', icon: <Megaphone className="h-4 w-4" /> },
     { label: 'Broadcast', href: '/admin/broadcast', icon: <Bell className="h-4 w-4" /> },
     { label: 'Kode Verifikator', href: '/admin/codes', icon: <TicketCheck className="h-4 w-4" /> },
-    { label: 'Layout Homepage', href: '/admin/homepage-layout', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Backup Data', href: '/admin/backup', icon: <Database className="h-4 w-4" /> },
     { label: 'Backup Terjadwal', href: '/admin/scheduled-backup', icon: <Clock className="h-4 w-4" /> },
-    { label: 'SEO Settings', href: '/admin/seo', icon: <Globe className="h-4 w-4" /> },
     { label: 'System Logs', href: '/admin/logs', icon: <ScrollText className="h-4 w-4" /> },
     { label: 'Pengaturan', href: '/admin/settings', icon: <Settings className="h-4 w-4" /> },
   ];
