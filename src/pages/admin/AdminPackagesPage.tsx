@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Plus, Edit, Trash2, Check, X } from 'lucide-react';
+import { Package, Plus, Edit, Trash2 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,13 +15,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Card,
   CardContent,
   CardDescription,
@@ -35,21 +28,13 @@ import { formatPrice } from '@/lib/utils';
 interface TransactionPackage {
   id: string;
   name: string;
-  classification_price: string;
   price_per_transaction: number;
-  group_commission_percent: number;
+  kas_fee: number;
   transaction_quota: number;
   validity_days: number;
   description: string | null;
   is_active: boolean;
 }
-
-const CLASSIFICATION_OPTIONS = [
-  { value: 'UNDER_5K', label: '≤ Rp 5.000' },
-  { value: 'FROM_5K_TO_10K', label: 'Rp 5.000 - 10.000' },
-  { value: 'FROM_10K_TO_20K', label: 'Rp 10.000 - 20.000' },
-  { value: 'ABOVE_20K', label: '> Rp 20.000' },
-];
 
 export default function AdminPackagesPage() {
   const [packages, setPackages] = useState<TransactionPackage[]>([]);
@@ -58,11 +43,10 @@ export default function AdminPackagesPage() {
   const [editingPackage, setEditingPackage] = useState<TransactionPackage | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    classification_price: 'UNDER_5K',
     price_per_transaction: 500,
-    group_commission_percent: 5,
+    kas_fee: 100,
     transaction_quota: 50,
-    validity_days: 30,
+    validity_days: 0,
     description: '',
     is_active: true,
   });
@@ -72,7 +56,7 @@ export default function AdminPackagesPage() {
       const { data, error } = await supabase
         .from('transaction_packages')
         .select('*')
-        .order('classification_price', { ascending: true });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
       setPackages(data || []);
@@ -138,9 +122,8 @@ export default function AdminPackagesPage() {
     setEditingPackage(pkg);
     setFormData({
       name: pkg.name,
-      classification_price: pkg.classification_price,
       price_per_transaction: pkg.price_per_transaction,
-      group_commission_percent: pkg.group_commission_percent,
+      kas_fee: pkg.kas_fee,
       transaction_quota: pkg.transaction_quota,
       validity_days: pkg.validity_days,
       description: pkg.description || '',
@@ -153,22 +136,17 @@ export default function AdminPackagesPage() {
     setEditingPackage(null);
     setFormData({
       name: '',
-      classification_price: 'UNDER_5K',
       price_per_transaction: 500,
-      group_commission_percent: 5,
+      kas_fee: 100,
       transaction_quota: 50,
-      validity_days: 30,
+      validity_days: 0,
       description: '',
       is_active: true,
     });
   };
 
-  const getClassificationLabel = (value: string) => {
-    return CLASSIFICATION_OPTIONS.find(o => o.value === value)?.label || value;
-  };
-
   return (
-    <AdminLayout title="Paket Transaksi" subtitle="Kelola paket kuota transaksi untuk pedagang">
+    <AdminLayout title="Paket Transaksi" subtitle="Kelola paket kuota transaksi general untuk pedagang">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-primary" />
@@ -194,11 +172,11 @@ export default function AdminPackagesPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="text-lg">{pkg.name}</CardTitle>
-                    <CardDescription>{getClassificationLabel(pkg.classification_price)}</CardDescription>
+                    <CardDescription>Paket Kuota Transaksi</CardDescription>
                   </div>
                   <div className="flex gap-1">
                     {pkg.is_active ? (
-                      <Badge variant="success">Aktif</Badge>
+                      <Badge className="bg-success/10 text-success">Aktif</Badge>
                     ) : (
                       <Badge variant="secondary">Nonaktif</Badge>
                     )}
@@ -213,15 +191,15 @@ export default function AdminPackagesPage() {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Komisi Kelompok</p>
-                    <p className="font-medium">{pkg.group_commission_percent}%</p>
+                    <p className="font-medium">{formatPrice(pkg.kas_fee)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Kuota</p>
-                    <p className="font-medium">{pkg.transaction_quota} transaksi</p>
+                    <p className="font-medium">{pkg.transaction_quota} kuota</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Masa Aktif</p>
-                    <p className="font-medium">{pkg.validity_days} hari</p>
+                    <p className="font-medium">{pkg.validity_days === 0 ? 'Selamanya' : `${pkg.validity_days} hari`}</p>
                   </div>
                 </div>
                 {pkg.description && (
@@ -257,27 +235,8 @@ export default function AdminPackagesPage() {
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Paket UMKM Mikro"
+                placeholder="Contoh: Paket Hemat"
               />
-            </div>
-
-            <div>
-              <Label>Klasifikasi Harga Produk</Label>
-              <Select
-                value={formData.classification_price}
-                onValueChange={(v) => setFormData({ ...formData, classification_price: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CLASSIFICATION_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -290,13 +249,11 @@ export default function AdminPackagesPage() {
                 />
               </div>
               <div>
-                <Label>Komisi Kelompok (%)</Label>
+                <Label>Komisi Kelompok (Rp)</Label>
                 <Input
                   type="number"
-                  min={0}
-                  max={100}
-                  value={formData.group_commission_percent}
-                  onChange={(e) => setFormData({ ...formData, group_commission_percent: Number(e.target.value) })}
+                  value={formData.kas_fee}
+                  onChange={(e) => setFormData({ ...formData, kas_fee: Number(e.target.value) })}
                 />
               </div>
             </div>
@@ -317,6 +274,7 @@ export default function AdminPackagesPage() {
                   value={formData.validity_days}
                   onChange={(e) => setFormData({ ...formData, validity_days: Number(e.target.value) })}
                 />
+                <p className="text-[10px] text-muted-foreground mt-1">Isi 0 untuk tanpa masa aktif</p>
               </div>
             </div>
 

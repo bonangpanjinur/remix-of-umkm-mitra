@@ -20,7 +20,6 @@ import { addDays } from 'date-fns';
 interface TransactionPackage {
   id: string;
   name: string;
-  classification_price: string;
   price_per_transaction: number;
   transaction_quota: number;
   validity_days: number;
@@ -42,23 +41,14 @@ interface AssignPackageDialogProps {
   onOpenChange: (open: boolean) => void;
   merchantId: string;
   merchantName: string;
-  classificationPrice: string | null;
   onSuccess: () => void;
 }
-
-const CLASSIFICATION_LABELS: Record<string, string> = {
-  'UNDER_5K': '≤ Rp 5.000',
-  'FROM_5K_TO_10K': 'Rp 5.000 - 10.000',
-  'FROM_10K_TO_20K': 'Rp 10.000 - 20.000',
-  'ABOVE_20K': '> Rp 20.000',
-};
 
 export function AssignPackageDialog({
   open,
   onOpenChange,
   merchantId,
   merchantName,
-  classificationPrice,
   onSuccess,
 }: AssignPackageDialogProps) {
   const [loading, setLoading] = useState(false);
@@ -71,24 +61,17 @@ export function AssignPackageDialog({
     if (open) {
       fetchData();
     }
-  }, [open, merchantId, classificationPrice]);
+  }, [open, merchantId]);
 
   const fetchData = async () => {
     setLoadingData(true);
     try {
-      // Fetch available packages (optionally filter by classification)
-      let query = supabase
+      // Fetch available packages (all active packages since they are now general)
+      const { data: packagesData, error: packagesError } = await supabase
         .from('transaction_packages')
         .select('*')
         .eq('is_active', true)
         .order('transaction_quota', { ascending: true });
-
-      // If merchant has classification, filter packages
-      if (classificationPrice) {
-        query = query.eq('classification_price', classificationPrice);
-      }
-
-      const { data: packagesData, error: packagesError } = await query;
 
       if (packagesError) throw packagesError;
       setPackages(packagesData || []);
@@ -128,7 +111,10 @@ export function AssignPackageDialog({
     setLoading(true);
     try {
       const startDate = new Date();
-      const expiredAt = addDays(startDate, selectedPkg.validity_days);
+      // If validity_days is 0, set a very far future date or handle in DB
+      const expiredAt = selectedPkg.validity_days === 0 
+        ? addDays(startDate, 3650) // 10 years as "forever"
+        : addDays(startDate, selectedPkg.validity_days);
 
       // Create new subscription
       const { data: newSub, error: subError } = await supabase
@@ -206,7 +192,7 @@ export function AssignPackageDialog({
               <div className="p-3 bg-info/10 border border-info/20 rounded-lg">
                 <p className="text-sm font-medium text-info mb-1">Paket Aktif Saat Ini</p>
                 <p className="text-sm text-muted-foreground">
-                  Sisa kuota: {currentSubscription.transaction_quota - currentSubscription.used_quota} transaksi
+                  Sisa kuota: {currentSubscription.transaction_quota - currentSubscription.used_quota} kuota
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Berakhir: {new Date(currentSubscription.expired_at).toLocaleDateString('id-ID')}
@@ -214,18 +200,11 @@ export function AssignPackageDialog({
               </div>
             )}
 
-            {/* Classification info */}
-            {classificationPrice && (
-              <div className="text-sm text-muted-foreground">
-                Klasifikasi harga: <Badge variant="outline">{CLASSIFICATION_LABELS[classificationPrice] || classificationPrice}</Badge>
-              </div>
-            )}
-
             {/* Package selection */}
             {packages.length === 0 ? (
               <div className="text-center py-6 text-muted-foreground">
                 <Package className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                <p>Tidak ada paket tersedia untuk klasifikasi ini</p>
+                <p>Tidak ada paket tersedia</p>
               </div>
             ) : (
               <RadioGroup value={selectedPackageId} onValueChange={setSelectedPackageId}>
@@ -244,10 +223,10 @@ export function AssignPackageDialog({
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <p className="font-medium">{pkg.name}</p>
-                          <Badge variant="secondary">{pkg.transaction_quota} transaksi</Badge>
+                          <Badge variant="secondary">{pkg.transaction_quota} kuota</Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {formatPrice(pkg.price_per_transaction)}/transaksi • {pkg.validity_days} hari
+                          {formatPrice(pkg.price_per_transaction)}/transaksi • {pkg.validity_days === 0 ? 'Tanpa Masa Aktif' : `${pkg.validity_days} hari`}
                         </p>
                         {pkg.description && (
                           <p className="text-xs text-muted-foreground mt-1">{pkg.description}</p>
@@ -273,11 +252,11 @@ export function AssignPackageDialog({
                   </div>
                   <div className="flex justify-between">
                     <span>Kuota</span>
-                    <span>{selectedPackage.transaction_quota} transaksi</span>
+                    <span>{selectedPackage.transaction_quota} kuota</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Masa Aktif</span>
-                    <span>{selectedPackage.validity_days} hari</span>
+                    <span>{selectedPackage.validity_days === 0 ? 'Selamanya' : `${selectedPackage.validity_days} hari`}</span>
                   </div>
                   <div className="flex justify-between font-medium pt-2 border-t">
                     <span>Total Nilai</span>

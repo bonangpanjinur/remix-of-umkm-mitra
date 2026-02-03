@@ -52,13 +52,6 @@ const BUSINESS_CATEGORIES = [
   { value: 'lainnya', label: 'Lainnya' },
 ];
 
-const CLASSIFICATION_PRICES = [
-  { value: 'UNDER_5K', label: 'Dibawah Rp 5.000' },
-  { value: 'FROM_5K_TO_10K', label: 'Rp 5.000 - Rp 10.000' },
-  { value: 'FROM_10K_TO_20K', label: 'Rp 10.000 - Rp 20.000' },
-  { value: 'ABOVE_20K', label: 'Diatas Rp 20.000' },
-];
-
 export function MerchantAddDialog({
   open,
   onOpenChange,
@@ -95,7 +88,6 @@ export function MerchantAddDialog({
     close_time: '17:00',
     business_category: 'kuliner',
     business_description: '',
-    classification_price: 'FROM_5K_TO_10K',
     is_open: true,
     status: 'ACTIVE',
     registration_status: 'APPROVED',
@@ -288,7 +280,6 @@ export function MerchantAddDialog({
           close_time: formData.close_time,
           business_category: formData.business_category,
           business_description: formData.business_description || null,
-          classification_price: formData.classification_price,
           is_open: formData.is_open,
           status: formData.status,
           registration_status: formData.registration_status,
@@ -324,7 +315,6 @@ export function MerchantAddDialog({
         close_time: '17:00',
         business_category: 'kuliner',
         business_description: '',
-        classification_price: 'FROM_5K_TO_10K',
         is_open: true,
         status: 'ACTIVE',
         registration_status: 'APPROVED',
@@ -353,229 +343,167 @@ export function MerchantAddDialog({
           <div className="border-b pb-4">
             <h3 className="font-semibold text-sm mb-3">Informasi Dasar</h3>
             
-            <div>
-              <Label>Nama Merchant *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nama toko/usaha"
-                disabled={loading}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nama Merchant *</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Nama toko/usaha"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Nomor Telepon *</Label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="08xxxxxxxxxx"
+                />
+              </div>
             </div>
 
-            <div className="mt-3">
-              <Label>Nomor Telepon *</Label>
-              <Input
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="08xxxxxxxxxx"
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          {/* Address Information - Cascading Dropdowns */}
-          <div className="border-b pb-4">
-            <h3 className="font-semibold text-sm mb-3">Alamat Lengkap</h3>
-            
-            {/* Provinsi */}
-            <div>
-              <Label>Provinsi *</Label>
-              <Select
-                value={formData.province_code}
-                onValueChange={handleProvinceChange}
-                disabled={loading || loadingProvinces}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={loadingProvinces ? 'Memuat...' : 'Pilih Provinsi'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {provinces.map((province) => (
-                    <SelectItem key={province.code} value={province.code}>
-                      {province.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Kabupaten/Kota */}
-            <div className="mt-3">
-              <Label>Kabupaten/Kota *</Label>
-              <Select
-                value={formData.regency_code}
-                onValueChange={handleRegencyChange}
-                disabled={loading || loadingRegencies || !formData.province_code}
-              >
-                <SelectTrigger>
-                  <SelectValue 
-                    placeholder={
-                      !formData.province_code 
-                        ? 'Pilih Provinsi terlebih dahulu'
-                        : loadingRegencies 
-                        ? 'Memuat...' 
-                        : 'Pilih Kabupaten/Kota'
-                    } 
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {regencies.map((regency) => (
-                    <SelectItem key={regency.code} value={regency.code}>
-                      {regency.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Kecamatan */}
-            <div className="mt-3">
-              <Label>Kecamatan *</Label>
-              <Select
-                value={formData.district_code}
-                onValueChange={handleDistrictChange}
-                disabled={loading || loadingDistricts || !formData.regency_code}
-              >
-                <SelectTrigger>
-                  <SelectValue 
-                    placeholder={
-                      !formData.regency_code 
-                        ? 'Pilih Kabupaten/Kota terlebih dahulu'
-                        : loadingDistricts 
-                        ? 'Memuat...' 
-                        : 'Pilih Kecamatan'
-                    } 
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {districts.map((district) => (
-                    <SelectItem key={district.code} value={district.code}>
-                      {district.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Kelurahan/Desa */}
-            <div className="mt-3">
-              <Label>Kelurahan/Desa *</Label>
-              <Select
-                value={formData.village_code}
-                onValueChange={handleVillageChange}
-                disabled={loading || loadingVillages || !formData.district_code}
-              >
-                <SelectTrigger>
-                  <SelectValue 
-                    placeholder={
-                      !formData.district_code 
-                        ? 'Pilih Kecamatan terlebih dahulu'
-                        : loadingVillages 
-                        ? 'Memuat...' 
-                        : 'Pilih Kelurahan/Desa'
-                    } 
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {apiVillages.map((village) => {
-                    const isLinked = dbVillages.some(
-                      v => v.name.toLowerCase() === village.name.toLowerCase()
-                    );
-                    return (
-                      <SelectItem key={village.code} value={village.code}>
-                        {village.name} {isLinked ? '✓ (Terhubung ke Desa Wisata)' : ''}
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2">
+                <Label>Kategori Bisnis</Label>
+                <Select
+                  value={formData.business_category}
+                  onValueChange={(v) => setFormData({ ...formData, business_category: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
                       </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-              {formData.village_id && (
-                <p className="text-xs text-green-600 mt-1">
-                  ✓ Merchant akan terhubung ke Desa Wisata
-                </p>
-              )}
-              {formData.village_code && !formData.village_id && (
-                <p className="text-xs text-amber-600 mt-1">
-                  ℹ Merchant berstatus independen (tidak terhubung ke Desa Wisata)
-                </p>
-              )}
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Status Merchant</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(v) => setFormData({ ...formData, status: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">Aktif</SelectItem>
+                    <SelectItem value="INACTIVE">Nonaktif</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {/* Alamat Detail */}
-            <div className="mt-3">
-              <Label>Alamat Detail</Label>
-              <Textarea
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="Alamat lengkap (jalan, nomor rumah, RT/RW, dll)"
-                rows={2}
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          {/* Business Information */}
-          <div className="border-b pb-4">
-            <h3 className="font-semibold text-sm mb-3">Informasi Bisnis</h3>
-            
-            <div>
-              <Label>Kategori Bisnis</Label>
-              <Select
-                value={formData.business_category}
-                onValueChange={(v) => setFormData({ ...formData, business_category: v })}
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BUSINESS_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="mt-3">
+            <div className="space-y-2 mt-4">
               <Label>Deskripsi Bisnis</Label>
               <Textarea
                 value={formData.business_description}
                 onChange={(e) => setFormData({ ...formData, business_description: e.target.value })}
                 placeholder="Deskripsi singkat tentang usaha"
                 rows={2}
-                disabled={loading}
               />
-            </div>
-
-            <div className="mt-3">
-              <Label>Klasifikasi Harga</Label>
-              <Select
-                value={formData.classification_price}
-                onValueChange={(v) => setFormData({ ...formData, classification_price: v })}
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CLASSIFICATION_PRICES.map((price) => (
-                    <SelectItem key={price.value} value={price.value}>
-                      {price.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
-          {/* Operating Hours */}
+          {/* Location Information */}
           <div className="border-b pb-4">
-            <h3 className="font-semibold text-sm mb-3">Jam Operasional</h3>
+            <h3 className="font-semibold text-sm mb-3">Lokasi & Alamat</h3>
             
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="space-y-2">
+                <Label>Provinsi *</Label>
+                <Select
+                  value={formData.province_code}
+                  onValueChange={handleProvinceChange}
+                  disabled={loadingProvinces}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingProvinces ? "Memuat..." : "Pilih Provinsi"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {provinces.map((p) => (
+                      <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Kabupaten/Kota *</Label>
+                <Select
+                  value={formData.regency_code}
+                  onValueChange={handleRegencyChange}
+                  disabled={!formData.province_code || loadingRegencies}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingRegencies ? "Memuat..." : "Pilih Kabupaten/Kota"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regencies.map((r) => (
+                      <SelectItem key={r.code} value={r.code}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2">
+                <Label>Kecamatan *</Label>
+                <Select
+                  value={formData.district_code}
+                  onValueChange={handleDistrictChange}
+                  disabled={!formData.regency_code || loadingDistricts}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingDistricts ? "Memuat..." : "Pilih Kecamatan"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {districts.map((d) => (
+                      <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Kelurahan/Desa *</Label>
+                <Select
+                  value={formData.village_code}
+                  onValueChange={handleVillageChange}
+                  disabled={!formData.district_code || loadingVillages}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingVillages ? "Memuat..." : "Pilih Kelurahan/Desa"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apiVillages.map((v) => (
+                      <SelectItem key={v.code} value={v.code}>{v.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2 mt-4">
+              <Label>Alamat Lengkap</Label>
+              <Textarea
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="Nama jalan, nomor rumah, dll"
+                rows={2}
+              />
+            </div>
+          </div>
+
+          {/* Operational Information */}
+          <div>
+            <h3 className="font-semibold text-sm mb-3">Operasional</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />
                   Jam Buka
@@ -584,10 +512,9 @@ export function MerchantAddDialog({
                   type="time"
                   value={formData.open_time}
                   onChange={(e) => setFormData({ ...formData, open_time: e.target.value })}
-                  disabled={loading}
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label className="flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5" />
                   Jam Tutup
@@ -596,39 +523,14 @@ export function MerchantAddDialog({
                   type="time"
                   value={formData.close_time}
                   onChange={(e) => setFormData({ ...formData, close_time: e.target.value })}
-                  disabled={loading}
                 />
               </div>
             </div>
-          </div>
 
-          {/* Status */}
-          <div className="pb-4">
-            <h3 className="font-semibold text-sm mb-3">Status</h3>
-            
-            <div>
-              <Label>Status Merchant</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(v) => setFormData({ ...formData, status: v })}
-                disabled={loading}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ACTIVE">Aktif</SelectItem>
-                  <SelectItem value="INACTIVE">Nonaktif</SelectItem>
-                  <SelectItem value="SUSPENDED">Ditangguhkan</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-3 pt-4">
+            <div className="flex items-center gap-3 mt-4">
               <Switch
                 checked={formData.is_open}
                 onCheckedChange={(v) => setFormData({ ...formData, is_open: v })}
-                disabled={loading}
               />
               <Label>Toko sedang buka</Label>
             </div>
@@ -636,16 +538,12 @@ export function MerchantAddDialog({
         </div>
 
         <DialogFooter>
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)}
-            disabled={loading}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Batal
           </Button>
           <Button onClick={handleSubmit} disabled={loading}>
             <Save className="h-4 w-4 mr-2" />
-            {loading ? 'Menyimpan...' : 'Simpan'}
+            {loading ? 'Menyimpan...' : 'Simpan Merchant'}
           </Button>
         </DialogFooter>
       </DialogContent>

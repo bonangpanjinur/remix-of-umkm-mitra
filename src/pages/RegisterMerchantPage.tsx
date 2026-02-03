@@ -5,8 +5,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
-  Store, Phone, MapPin, ArrowLeft, CheckCircle, Clock, CreditCard, 
-  Tag, FileText, MapPinned, Building, Shield, AlertCircle, Check
+  Store, Phone, MapPin, ArrowLeft, CheckCircle, Clock, 
+  Tag, FileText, Building, Shield, AlertCircle, Check
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BottomNav } from '../components/layout/BottomNav';
@@ -36,7 +36,6 @@ const merchantSchema = z.object({
   phone: z.string().min(10, 'Nomor telepon minimal 10 digit').max(15),
   openTime: z.string().min(1, 'Pilih jam buka'),
   closeTime: z.string().min(1, 'Pilih jam tutup'),
-  classificationPrice: z.string().min(1, 'Pilih klasifikasi harga'),
 });
 
 type MerchantFormData = z.infer<typeof merchantSchema>;
@@ -45,13 +44,6 @@ const timeOptions = [
   '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
   '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
   '21:00', '22:00', '23:00', '00:00'
-];
-
-const priceClassifications = [
-  { value: 'UNDER_5K', label: 'Sangat Murah (< Rp 5.000)', icon: '💰' },
-  { value: 'FROM_5K_TO_10K', label: 'Murah (Rp 5.000 - Rp 10.000)', icon: '💵' },
-  { value: 'FROM_10K_TO_20K', label: 'Sedang (Rp 10.000 - Rp 20.000)', icon: '💳' },
-  { value: 'ABOVE_20K', label: 'Premium (> Rp 20.000)', icon: '💎' },
 ];
 
 const businessCategories = [
@@ -173,7 +165,6 @@ export default function RegisterMerchantPage() {
       setVillageLoading(true);
       try {
         const subdistrictName = subdistrictsList.find(s => s.code === selectedSubdistrict)?.name || '';
-        console.log('Searching for village match with name:', subdistrictName);
         
         const { data, error } = await supabase
           .from('villages')
@@ -270,7 +261,6 @@ export default function RegisterMerchantPage() {
         district: districtName,
         subdistrict: subdistrictName,
         phone: data.phone.trim(),
-        classification_price: data.classificationPrice,
         business_category: data.businessCategory,
         business_description: data.businessDescription?.trim() || null,
         verifikator_code: referralCode ? referralCode.toUpperCase() : null,
@@ -286,9 +276,9 @@ export default function RegisterMerchantPage() {
       if (error) throw error;
       setIsSuccess(true);
       toast.success('Pendaftaran pedagang berhasil dikirim!');
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      toast.error(error.message || 'Terjadi kesalahan saat mendaftar');
+    } catch (error) {
+      console.error('Error submitting merchant registration:', error);
+      toast.error('Gagal mengirim pendaftaran. Silakan coba lagi.');
     } finally {
       setIsSubmitting(false);
     }
@@ -296,232 +286,318 @@ export default function RegisterMerchantPage() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="bg-card p-8 rounded-3xl shadow-sm border border-border max-w-md w-full"
-        >
-          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="h-10 w-10 text-primary" />
+      <div className="mobile-shell bg-background flex flex-col min-h-screen">
+        <PageHeader title="Pendaftaran Berhasil" showBack={false} />
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mb-6">
+            <CheckCircle className="h-10 w-10 text-success" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">Pendaftaran Berhasil!</h1>
+          <h2 className="text-2xl font-bold mb-2">Pendaftaran Terkirim!</h2>
           <p className="text-muted-foreground mb-8">
-            Data usaha Anda telah kami terima dan sedang dalam proses verifikasi. 
-            Kami akan menghubungi Anda melalui nomor WhatsApp yang terdaftar.
+            Terima kasih telah mendaftar. Tim kami akan melakukan verifikasi data usaha Anda dalam 1-2 hari kerja. Kami akan menghubungi Anda melalui nomor telepon yang terdaftar.
           </p>
-          <Button onClick={() => navigate('/')} className="w-full rounded-xl py-6">
+          <Button onClick={() => navigate('/')} className="w-full">
             Kembali ke Beranda
           </Button>
-        </motion.div>
+        </div>
+        <BottomNav />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <PageHeader title="Daftar Merchant" showBack onBack={() => navigate(-1)} />
+    <div className="mobile-shell bg-background flex flex-col min-h-screen">
+      <PageHeader title="Daftar Jadi Pedagang" onBack={() => navigate('/register')} />
       
-      <main className="p-4 max-w-lg mx-auto">
-        <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Store className="h-6 w-6 text-primary" />
+      <div className="flex-1 overflow-y-auto pb-24">
+        <form onSubmit={handleSubmit(onSubmit)} className="px-5 py-6 space-y-6">
+          {/* Referral Section */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-primary">
+              <Tag className="h-5 w-5" />
+              <h3 className="font-bold">Kode Referral</h3>
             </div>
-            <div className="flex-1">
-              <h1 className="text-lg font-bold text-foreground leading-tight">Daftarkan Usaha</h1>
-              <p className="text-xs text-muted-foreground">Lengkapi data usaha Anda</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Referral Section */}
-            <div className="space-y-4">
-              <div className="bg-primary/5 rounded-2xl p-4 border border-primary/10">
-                <div className="flex items-start gap-3">
-                  <Shield className="h-5 w-5 text-primary mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Punya Kode Referral?</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Masukkan kode dari Verifikator untuk prioritas verifikasi.
-                    </p>
-                  </div>
+            <div className="space-y-2">
+              <Label htmlFor="referralCode">Kode Verifikator (Opsional)</Label>
+              <div className="relative">
+                <Input
+                  id="referralCode"
+                  placeholder="Masukkan kode jika ada"
+                  className={`uppercase pr-10 ${referralInfo.isValid ? 'border-success focus-visible:ring-success' : ''}`}
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value)}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {referralInfo.isLoading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  ) : referralInfo.isValid ? (
+                    <Check className="h-5 w-5 text-success" />
+                  ) : null}
                 </div>
               </div>
-              <div>
-                <Label htmlFor="referralCode" className="text-xs">Kode Referral (opsional)</Label>
-                <div className="relative mt-1.5">
-                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="referralCode"
-                    placeholder="CONTOH: DESAMART01"
-                    className={`pl-10 uppercase font-bold tracking-wider ${referralInfo.isValid ? 'border-primary bg-primary/5' : ''}`}
-                    value={referralCode}
-                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                  />
-                  {referralInfo.isLoading && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
-                    </div>
-                  )}
-                  {referralInfo.isValid && !referralInfo.isLoading && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <CheckCircle className="h-4 w-4 text-primary" />
-                    </div>
-                  )}
-                </div>
-                {referralInfo.isValid && (
-                  <div className="mt-3 p-3 bg-primary/10 rounded-xl border border-primary/20">
-                    <p className="text-xs font-bold text-primary">✓ Kode Valid: {referralInfo.tradeGroup}</p>
-                    <p className="text-[10px] text-primary/80 mt-0.5">{referralInfo.description}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Business Info Section */}
-            <div className="space-y-5 pt-4 border-t border-border">
-              <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                <FileText className="h-4 w-4 text-primary" />
-                Informasi Usaha
-              </h2>
-              <div>
-                <Label htmlFor="name" className="text-xs">Nama Usaha *</Label>
-                <Input id="name" placeholder="Contoh: Warung Nasi Ibu Siti" {...register('name')} className="mt-1.5" />
-                {errors.name && <p className="text-destructive text-xs mt-1">{errors.name.message}</p>}
-              </div>
-              <div>
-                <Label className="text-xs">Kategori Usaha *</Label>
-                <div className="grid grid-cols-1 gap-2 mt-2">
-                  {businessCategories.map((cat) => (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      onClick={() => setValue('businessCategory', cat.value)}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${watch('businessCategory') === cat.value ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
-                    >
-                      <span className="text-xl">{cat.icon}</span>
-                      <span className="text-sm font-medium">{cat.label}</span>
-                      {watch('businessCategory') === cat.value && <Check className="h-4 w-4 text-primary ml-auto" />}
-                    </button>
-                  ))}
-                </div>
-                {errors.businessCategory && <p className="text-destructive text-xs mt-1">{errors.businessCategory.message}</p>}
-              </div>
-            </div>
-
-            {/* Address Section */}
-            <div className="space-y-5 pt-4 border-t border-border">
-              <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                <MapPinned className="h-4 w-4 text-primary" />
-                Alamat Lengkap
-              </h2>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label className="text-xs">Provinsi *</Label>
-                  <Select onValueChange={(v) => { setSelectedProvince(v); setValue('province', v); }}>
-                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pilih provinsi" /></SelectTrigger>
-                    <SelectContent>{provincesList.map((p) => <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  {errors.province && <p className="text-destructive text-xs mt-1">{errors.province.message}</p>}
-                </div>
-                <div>
-                  <Label className="text-xs">Kabupaten/Kota *</Label>
-                  <Select onValueChange={(v) => { setSelectedCity(v); setValue('city', v); }} disabled={!selectedProvince}>
-                    <SelectTrigger className="mt-1.5"><SelectValue placeholder={selectedProvince ? "Pilih kabupaten/kota" : "Pilih provinsi dulu"} /></SelectTrigger>
-                    <SelectContent>{cities.map((c) => <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  {errors.city && <p className="text-destructive text-xs mt-1">{errors.city.message}</p>}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Kecamatan *</Label>
-                    <Select onValueChange={(v) => { setSelectedDistrict(v); setValue('district', v); }} disabled={!selectedCity}>
-                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pilih kecamatan" /></SelectTrigger>
-                      <SelectContent>{districtsList.map((d) => <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                    {errors.district && <p className="text-destructive text-xs mt-1">{errors.district.message}</p>}
-                  </div>
-                  <div>
-                    <Label className="text-xs">Kelurahan/Desa *</Label>
-                    <Select onValueChange={(v) => { setSelectedSubdistrict(v); setValue('subdistrict', v); }} disabled={!selectedDistrict}>
-                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Pilih kelurahan" /></SelectTrigger>
-                      <SelectContent>{subdistrictsList.map((s) => <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                    {errors.subdistrict && <p className="text-destructive text-xs mt-1">{errors.subdistrict.message}</p>}
-                  </div>
-                </div>
-              </div>
-              {selectedSubdistrict && (
-                <div className={`rounded-xl p-4 ${villageLoading ? 'bg-muted' : matchedVillage ? 'bg-primary/10 border border-primary/20' : 'bg-accent/10 border border-accent/20'}`}>
-                  {villageLoading ? <div className="flex items-center gap-2"><div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" /><span className="text-sm text-muted-foreground">Mencari desa wisata...</span></div> : matchedVillage ? <div className="flex items-start gap-3"><Building className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" /><div><p className="text-xs text-muted-foreground mb-1">Desa Wisata Terdeteksi:</p><p className="text-sm font-semibold text-foreground">{matchedVillage.name}</p><p className="text-xs text-muted-foreground">{matchedVillage.district}, {matchedVillage.regency}</p></div></div> : <div className="flex items-start gap-3"><AlertCircle className="h-5 w-5 text-accent-foreground flex-shrink-0 mt-0.5" /><div><p className="text-sm font-medium text-foreground">Belum Ada Desa Wisata</p><p className="text-xs text-muted-foreground">Lokasi Anda belum terdaftar sebagai desa wisata resmi.</p></div></div>}
-                </div>
+              {referralInfo.isValid && (
+                <p className="text-xs text-success flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Kode valid: {referralInfo.tradeGroup}
+                </p>
               )}
-              <div>
-                <Label htmlFor="addressDetail" className="text-xs">Alamat Detail *</Label>
-                <div className="relative mt-1.5">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Textarea id="addressDetail" placeholder="Jalan, nomor, RT/RW, patokan..." {...register('addressDetail')} className="pl-10 min-h-[70px]" />
-                </div>
-                {errors.addressDetail && <p className="text-destructive text-xs mt-1">{errors.addressDetail.message}</p>}
+              {referralCode && !referralInfo.isValid && !referralInfo.isLoading && referralCode.length >= 3 && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {referralInfo.description || 'Kode tidak ditemukan atau tidak aktif'}
+                </p>
+              )}
+            </div>
+          </section>
+
+          {/* Business Info */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-primary">
+              <Store className="h-5 w-5" />
+              <h3 className="font-bold">Informasi Usaha</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nama Usaha/Toko</Label>
+                <Input id="name" placeholder="Contoh: Warung Makan Berkah" {...register('name')} />
+                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
               </div>
-              <div>
-                <Label htmlFor="phone" className="text-xs">Nomor WhatsApp *</Label>
-                <div className="relative mt-1.5">
+
+              <div className="space-y-2">
+                <Label>Kategori Usaha</Label>
+                <Select onValueChange={(v) => setValue('businessCategory', v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {businessCategories.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        <span className="flex items-center gap-2">
+                          <span>{cat.icon}</span>
+                          {cat.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.businessCategory && <p className="text-xs text-destructive">{errors.businessCategory.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="businessDescription">Deskripsi Singkat (Opsional)</Label>
+                <Textarea 
+                  id="businessDescription" 
+                  placeholder="Ceritakan sedikit tentang produk atau jasa Anda"
+                  className="resize-none"
+                  rows={3}
+                  {...register('businessDescription')}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Operational Info */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-primary">
+              <Clock className="h-5 w-5" />
+              <h3 className="font-bold">Jam Operasional</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Jam Buka</Label>
+                <Select onValueChange={(v) => setValue('openTime', v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Buka" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOptions.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.openTime && <p className="text-xs text-destructive">{errors.openTime.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>Jam Tutup</Label>
+                <Select onValueChange={(v) => setValue('closeTime', v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tutup" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timeOptions.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.closeTime && <p className="text-xs text-destructive">{errors.closeTime.message}</p>}
+              </div>
+            </div>
+          </section>
+
+          {/* Contact & Address */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-primary">
+              <MapPin className="h-5 w-5" />
+              <h3 className="font-bold">Kontak & Alamat</h3>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Nomor WhatsApp</Label>
+                <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="phone" placeholder="08xxxxxxxxxx" {...register('phone')} className="pl-10" />
+                  <Input id="phone" placeholder="08xxxxxxxxxx" className="pl-10" {...register('phone')} />
                 </div>
-                {errors.phone && <p className="text-destructive text-xs mt-1">{errors.phone.message}</p>}
+                {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Provinsi</Label>
+                <Select onValueChange={(v) => {
+                  setSelectedProvince(v);
+                  setValue('province', v);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih provinsi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {provincesList.map((p) => (
+                      <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.province && <p className="text-xs text-destructive">{errors.province.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Kabupaten/Kota</Label>
+                <Select 
+                  disabled={!selectedProvince} 
+                  onValueChange={(v) => {
+                    setSelectedCity(v);
+                    setValue('city', v);
+                  }}
+                  value={selectedCity}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih kabupaten/kota" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.city && <p className="text-xs text-destructive">{errors.city.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Kecamatan</Label>
+                <Select 
+                  disabled={!selectedCity} 
+                  onValueChange={(v) => {
+                    setSelectedDistrict(v);
+                    setValue('district', v);
+                  }}
+                  value={selectedDistrict}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih kecamatan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {districtsList.map((d) => (
+                      <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.district && <p className="text-xs text-destructive">{errors.district.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Kelurahan/Desa</Label>
+                <Select 
+                  disabled={!selectedDistrict} 
+                  onValueChange={(v) => {
+                    setSelectedSubdistrict(v);
+                    setValue('subdistrict', v);
+                  }}
+                  value={selectedSubdistrict}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih kelurahan/desa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subdistrictsList.map((s) => (
+                      <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.subdistrict && <p className="text-xs text-destructive">{errors.subdistrict.message}</p>}
+              </div>
+
+              {villageLoading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+                  <div className="h-2 w-2 bg-primary rounded-full animate-bounce" />
+                  Mengecek ketersediaan desa wisata...
+                </div>
+              ) : matchedVillage ? (
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-start gap-3">
+                  <Building className="h-5 w-5 text-primary mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-primary">Terdeteksi di {matchedVillage.name}</p>
+                    <p className="text-xs text-muted-foreground">Usaha Anda akan otomatis terhubung dengan Desa Wisata ini.</p>
+                  </div>
+                </div>
+              ) : selectedSubdistrict ? (
+                <div className="p-3 bg-secondary/50 border border-border rounded-lg flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium">Desa Wisata Belum Terdaftar</p>
+                    <p className="text-xs text-muted-foreground">Anda tetap bisa mendaftar, namun belum terhubung ke desa wisata tertentu.</p>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                <Label htmlFor="addressDetail">Alamat Detail</Label>
+                <Textarea 
+                  id="addressDetail" 
+                  placeholder="Nama jalan, nomor rumah, patokan, dll"
+                  className="resize-none"
+                  rows={2}
+                  {...register('addressDetail')}
+                />
+                {errors.addressDetail && <p className="text-xs text-destructive">{errors.addressDetail.message}</p>}
+              </div>
+            </div>
+          </section>
+
+          {/* Terms & Submit */}
+          <div className="pt-4 space-y-4">
+            <div className="p-4 bg-secondary/30 rounded-xl border border-border">
+              <div className="flex gap-3">
+                <Shield className="h-5 w-5 text-primary flex-shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Dengan mendaftar, Anda menyetujui <span className="text-primary font-medium">Syarat & Ketentuan</span> serta <span className="text-primary font-medium">Kebijakan Privasi</span> DesaMart. Data Anda akan diverifikasi untuk keamanan bersama.
+                </p>
               </div>
             </div>
 
-            {/* Operating Hours & Price Section */}
-            <div className="space-y-5 pt-4 border-t border-border">
-              <h2 className="font-semibold text-sm text-foreground flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                Operasional & Harga
-              </h2>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Jam Buka *</Label>
-                  <Select onValueChange={(v) => setValue('openTime', v)}>
-                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Buka" /></SelectTrigger>
-                    <SelectContent>{timeOptions.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs">Jam Tutup *</Label>
-                  <Select onValueChange={(v) => setValue('closeTime', v)}>
-                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Tutup" /></SelectTrigger>
-                    <SelectContent>{timeOptions.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">Klasifikasi Harga *</Label>
-                <div className="grid grid-cols-1 gap-2 mt-2">
-                  {priceClassifications.map((item) => (
-                    <button
-                      key={item.value}
-                      type="button"
-                      onClick={() => setValue('classificationPrice', item.value)}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${watch('classificationPrice') === item.value ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
-                    >
-                      <span className="text-xl">{item.icon}</span>
-                      <span className="text-sm font-medium">{item.label}</span>
-                      {watch('classificationPrice') === item.value && <Check className="h-4 w-4 text-primary ml-auto" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full rounded-xl py-6 mt-4" disabled={isSubmitting}>
-              {isSubmitting ? <div className="flex items-center gap-2"><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /><span>Memproses...</span></div> : 'Daftar Sekarang'}
+            <Button type="submit" className="w-full h-12 text-lg font-bold" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-background border-t-transparent mr-2" />
+                  Memproses...
+                </>
+              ) : (
+                'Daftar Sekarang'
+              )}
             </Button>
-          </form>
-        </div>
-      </main>
+          </div>
+        </form>
+      </div>
+      
       <BottomNav />
     </div>
   );

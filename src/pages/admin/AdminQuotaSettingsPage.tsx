@@ -46,8 +46,7 @@ export default function AdminQuotaSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // For simplicity, we'll delete all and re-insert
-      // In a production app, you might want a more sophisticated sync
+      // Delete all existing tiers
       const { error: deleteError } = await supabase
         .from('quota_tiers')
         .delete()
@@ -55,12 +54,21 @@ export default function AdminQuotaSettingsPage() {
 
       if (deleteError) throw deleteError;
 
-      const tiersToInsert = tiers.map(({ id, ...rest }) => rest);
-      const { error: insertError } = await supabase
-        .from('quota_tiers')
-        .insert(tiersToInsert);
+      // Insert new tiers
+      const tiersToInsert = tiers.map(({ id, ...rest }) => ({
+        ...rest,
+        min_price: Number(rest.min_price),
+        max_price: rest.max_price === null ? null : Number(rest.max_price),
+        credit_cost: Number(rest.credit_cost)
+      }));
 
-      if (insertError) throw insertError;
+      if (tiersToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('quota_tiers')
+          .insert(tiersToInsert);
+
+        if (insertError) throw insertError;
+      }
 
       toast.success('Pengaturan kuota berhasil disimpan');
       loadTiers();
@@ -73,15 +81,15 @@ export default function AdminQuotaSettingsPage() {
   };
 
   return (
-    <AdminLayout title="Pengaturan Kuota" subtitle="Kelola biaya kredit transaksi berdasarkan harga produk">
+    <AdminLayout title="Pengaturan Kuota" subtitle="Kelola biaya kuota transaksi berdasarkan harga produk secara dinamis">
       <div className="space-y-6">
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>Tier Biaya Kredit</CardTitle>
+                <CardTitle>Tier Biaya Kuota</CardTitle>
                 <CardDescription>
-                  Tentukan berapa banyak kredit yang dihabiskan untuk setiap rentang harga produk.
+                  Tentukan berapa banyak kuota yang dihabiskan untuk setiap rentang harga produk.
                 </CardDescription>
               </div>
               <Button onClick={handleAddTier} variant="outline" size="sm">
@@ -95,7 +103,7 @@ export default function AdminQuotaSettingsPage() {
               <div className="grid grid-cols-12 gap-4 font-medium text-sm text-muted-foreground pb-2 border-b">
                 <div className="col-span-4">Harga Minimum (Rp)</div>
                 <div className="col-span-4">Harga Maksimum (Rp)</div>
-                <div className="col-span-3">Biaya Kredit</div>
+                <div className="col-span-3">Biaya Kuota</div>
                 <div className="col-span-1"></div>
               </div>
 
@@ -105,7 +113,7 @@ export default function AdminQuotaSettingsPage() {
                     <Input
                       type="number"
                       value={tier.min_price}
-                      onChange={(e) => handleUpdateTier(tier.id, 'min_price', parseInt(e.target.value) || 0)}
+                      onChange={(e) => handleUpdateTier(tier.id, 'min_price', e.target.value)}
                     />
                   </div>
                   <div className="col-span-4">
@@ -113,14 +121,14 @@ export default function AdminQuotaSettingsPage() {
                       type="number"
                       placeholder="Tanpa Batas"
                       value={tier.max_price === null ? '' : tier.max_price}
-                      onChange={(e) => handleUpdateTier(tier.id, 'max_price', e.target.value === '' ? null : parseInt(e.target.value))}
+                      onChange={(e) => handleUpdateTier(tier.id, 'max_price', e.target.value === '' ? null : e.target.value)}
                     />
                   </div>
                   <div className="col-span-3">
                     <Input
                       type="number"
                       value={tier.credit_cost}
-                      onChange={(e) => handleUpdateTier(tier.id, 'credit_cost', parseInt(e.target.value) || 1)}
+                      onChange={(e) => handleUpdateTier(tier.id, 'credit_cost', e.target.value)}
                     />
                   </div>
                   <div className="col-span-1">
@@ -159,6 +167,18 @@ export default function AdminQuotaSettingsPage() {
                 {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Contoh Logika</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            <p>• Harga produk 0 - 3000: Menghabiskan 1 kuota</p>
+            <p>• Harga produk 3001 - 5000: Menghabiskan 1 kuota</p>
+            <p>• Harga produk 5001 - 10000: Menghabiskan 2 kuota</p>
+            <p>• Harga produk &gt; 10000: Menghabiskan 3 kuota</p>
           </CardContent>
         </Card>
       </div>

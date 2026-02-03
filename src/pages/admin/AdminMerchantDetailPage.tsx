@@ -36,7 +36,6 @@ interface MerchantDetail {
   subdistrict: string | null;
   business_category: string | null;
   business_description: string | null;
-  classification_price: string | null;
   open_time: string | null;
   close_time: string | null;
   image_url: string | null;
@@ -314,197 +313,140 @@ export default function AdminMerchantDetailPage() {
                 {getStatusBadge(merchant.status, merchant.registration_status)}
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground">
-                {merchant.phone && (
-                  <div className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
-                    {merchant.phone}
-                  </div>
-                )}
-                {merchant.open_time && merchant.close_time && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {merchant.open_time} - {merchant.close_time}
-                  </div>
-                )}
-                {merchant.rating_avg && (
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 text-yellow-500" />
-                    {merchant.rating_avg.toFixed(1)} ({merchant.rating_count} ulasan)
-                  </div>
-                )}
-              </div>
-
-              {merchant.address && (
-                <div className="mt-2 flex items-start gap-1 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span>
-                    {merchant.address}, {merchant.subdistrict}, {merchant.district}, {merchant.city}, {merchant.province}
-                  </span>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>{merchant.phone || '-'}</span>
                 </div>
-              )}
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate">{merchant.villages?.name || merchant.subdistrict || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span>{merchant.open_time || '08:00'} - {merchant.close_time || '17:00'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                  <span>{merchant.rating_avg || 0} ({merchant.rating_count || 0} ulasan)</span>
+                </div>
+              </div>
             </div>
           </div>
-
-          {merchant.rejection_reason && (
-            <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-sm text-destructive">
-                <strong>Alasan Penolakan:</strong> {merchant.rejection_reason}
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      {/* Stats Cards */}
+      {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-info/10">
-                <Package className="h-5 w-5 text-info" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Package className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.activeProducts}</p>
-                <p className="text-xs text-muted-foreground">Produk Aktif</p>
+                <p className="text-xs text-muted-foreground">Total Produk</p>
+                <p className="text-lg font-bold">{stats.totalProducts}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-success/10">
-                <ShoppingCart className="h-5 w-5 text-success" />
+              <div className="p-2 bg-success/10 rounded-lg">
+                <ShoppingCart className="h-4 w-4 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{stats.completedOrders}</p>
-                <p className="text-xs text-muted-foreground">Pesanan Selesai</p>
+                <p className="text-xs text-muted-foreground">Total Pesanan</p>
+                <p className="text-lg font-bold">{stats.totalOrders}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <TrendingUp className="h-5 w-5 text-primary" />
+              <div className="p-2 bg-info/10 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-info" />
               </div>
               <div>
+                <p className="text-xs text-muted-foreground">Total Omzet</p>
                 <p className="text-lg font-bold">{formatCurrency(stats.totalRevenue)}</p>
-                <p className="text-xs text-muted-foreground">Total Penjualan</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-warning/10">
-                <CreditCard className="h-5 w-5 text-warning" />
+              <div className="p-2 bg-warning/10 rounded-lg">
+                <CreditCard className="h-4 w-4 text-warning" />
               </div>
               <div>
-                <p className="text-lg font-bold">{formatCurrency(merchant.available_balance || 0)}</p>
                 <p className="text-xs text-muted-foreground">Saldo Tersedia</p>
+                <p className="text-lg font-bold">{formatCurrency(merchant.available_balance || 0)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="info" className="space-y-4">
+      {/* Tabs Content */}
+      <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="info">Informasi</TabsTrigger>
-          <TabsTrigger value="products">Produk ({stats.totalProducts})</TabsTrigger>
-          <TabsTrigger value="orders">Pesanan ({stats.totalOrders})</TabsTrigger>
+          <TabsTrigger value="overview">Ikhtisar</TabsTrigger>
+          <TabsTrigger value="products">Produk</TabsTrigger>
+          <TabsTrigger value="orders">Pesanan</TabsTrigger>
+          <TabsTrigger value="finance">Keuangan</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="info">
-          <div className="grid md:grid-cols-2 gap-4">
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Detail Bisnis</CardTitle>
+                <CardTitle className="text-base">Informasi Bisnis</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Kategori</span>
-                  <span>{merchant.business_category || '-'}</span>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-1">
+                  <p className="text-sm text-muted-foreground">Kategori</p>
+                  <p className="text-sm font-medium col-span-2">{merchant.business_category || '-'}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Klasifikasi Harga</span>
-                  <span>{merchant.classification_price || '-'}</span>
+                <div className="grid grid-cols-3 gap-1">
+                  <p className="text-sm text-muted-foreground">Deskripsi</p>
+                  <p className="text-sm col-span-2">{merchant.business_description || '-'}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status Toko</span>
-                  <Badge variant={merchant.is_open ? 'default' : 'secondary'}>
-                    {merchant.is_open ? 'Buka' : 'Tutup'}
-                  </Badge>
+                <div className="grid grid-cols-3 gap-1">
+                  <p className="text-sm text-muted-foreground">Grup Dagang</p>
+                  <p className="text-sm font-medium col-span-2">{merchant.trade_group || '-'}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Desa Wisata</span>
-                  <span>{merchant.villages?.name || '-'}</span>
-                </div>
-                {merchant.business_description && (
-                  <div className="pt-2 border-t">
-                    <p className="text-muted-foreground mb-1">Deskripsi:</p>
-                    <p>{merchant.business_description}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Info Pendaftaran</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tanggal Daftar</span>
-                  <span>
-                    {merchant.registered_at 
-                      ? new Date(merchant.registered_at).toLocaleDateString('id-ID')
-                      : '-'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tanggal Disetujui</span>
-                  <span>
-                    {merchant.approved_at 
-                      ? new Date(merchant.approved_at).toLocaleDateString('id-ID')
-                      : '-'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Kode Referral</span>
-                  <span>{merchant.verifikator_code || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Kelompok Dagang</span>
-                  <span>{merchant.trade_group || '-'}</span>
+                <div className="grid grid-cols-3 gap-1">
+                  <p className="text-sm text-muted-foreground">Kode Verifikator</p>
+                  <p className="text-sm font-medium col-span-2">{merchant.verifikator_code || '-'}</p>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Keuangan</CardTitle>
+                <CardTitle className="text-base">Lokasi & Alamat</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Saldo Tersedia</span>
-                  <span className="font-medium">{formatCurrency(merchant.available_balance || 0)}</span>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-1">
+                  <p className="text-sm text-muted-foreground">Provinsi</p>
+                  <p className="text-sm font-medium col-span-2">{merchant.province || '-'}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Saldo Pending</span>
-                  <span>{formatCurrency(merchant.pending_balance || 0)}</span>
+                <div className="grid grid-cols-3 gap-1">
+                  <p className="text-sm text-muted-foreground">Kota/Kab</p>
+                  <p className="text-sm font-medium col-span-2">{merchant.city || '-'}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Ditarik</span>
-                  <span>{formatCurrency(merchant.total_withdrawn || 0)}</span>
+                <div className="grid grid-cols-3 gap-1">
+                  <p className="text-sm text-muted-foreground">Kecamatan</p>
+                  <p className="text-sm font-medium col-span-2">{merchant.district || '-'}</p>
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  <p className="text-sm text-muted-foreground">Alamat</p>
+                  <p className="text-sm col-span-2">{merchant.address || '-'}</p>
                 </div>
               </CardContent>
             </Card>
@@ -513,97 +455,126 @@ export default function AdminMerchantDetailPage() {
 
         <TabsContent value="products">
           <Card>
-            <CardContent className="p-4">
-              {products.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Belum ada produk</p>
-              ) : (
-                <div className="space-y-3">
-                  {products.map((product) => (
-                    <div key={product.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                      <Avatar className="h-12 w-12 rounded-lg">
-                        <AvatarImage src={product.image_url || ''} alt={product.name} />
-                        <AvatarFallback className="rounded-lg">
-                          <Package className="h-5 w-5" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-muted-foreground">{formatCurrency(product.price)}</p>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Produk Terbaru</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => navigate(`/admin/merchants/${id}/products`)}>
+                Lihat Semua
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {products.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground">Belum ada produk.</p>
+                ) : (
+                  products.map((product) => (
+                    <div key={product.id} className="flex items-center justify-between p-2 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 rounded-md">
+                          <AvatarImage src={product.image_url || ''} />
+                          <AvatarFallback className="rounded-md"><Package className="h-4 w-4" /></AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">{formatCurrency(product.price)} • Stok: {product.stock}</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm">Stok: {product.stock}</p>
-                        <Badge variant={product.is_active ? 'default' : 'secondary'} className="text-xs">
-                          {product.is_active ? 'Aktif' : 'Nonaktif'}
-                        </Badge>
-                      </div>
+                      <Badge variant={product.is_active ? 'success' : 'secondary'}>
+                        {product.is_active ? 'Aktif' : 'Nonaktif'}
+                      </Badge>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="orders">
           <Card>
-            <CardContent className="p-4">
-              {orders.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Belum ada pesanan</p>
-              ) : (
-                <div className="space-y-3">
-                  {orders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Pesanan Terbaru</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => navigate(`/admin/merchants/${id}/orders`)}>
+                Lihat Semua
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {orders.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground">Belum ada pesanan.</p>
+                ) : (
+                  orders.map((order) => (
+                    <div key={order.id} className="flex items-center justify-between p-2 border rounded-lg">
                       <div>
-                        <p className="font-medium text-sm">#{order.id.slice(0, 8)}</p>
+                        <p className="text-sm font-medium">Order #{order.id.slice(0, 8)}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(order.created_at).toLocaleDateString('id-ID')}
+                          {new Date(order.created_at).toLocaleDateString('id-ID')} • {formatCurrency(order.total)}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-medium">{formatCurrency(order.total)}</p>
-                        <Badge variant="outline" className="text-xs">{order.status}</Badge>
-                      </div>
+                      <Badge>{order.status}</Badge>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="finance">
+          <div className="grid md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Tersedia</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-success">{formatCurrency(merchant.available_balance || 0)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Tertunda</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-warning">{formatCurrency(merchant.pending_balance || 0)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Total Penarikan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold text-primary">{formatCurrency(merchant.total_withdrawn || 0)}</p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
 
-      {/* Edit Merchant Dialog */}
-      {merchant && (
-        <MerchantEditDialog
-          open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
-          merchantId={merchant.id}
-          initialData={{
-            name: merchant.name,
-            phone: merchant.phone,
-            address: merchant.address,
-            open_time: merchant.open_time,
-            close_time: merchant.close_time,
-            business_category: merchant.business_category,
-            business_description: merchant.business_description,
-            is_open: merchant.is_open,
-            status: merchant.status,
-          }}
-          onSuccess={fetchMerchantData}
-        />
-      )}
+      {/* Dialogs */}
+      <MerchantEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        merchantId={id || ''}
+        initialData={{
+          name: merchant.name,
+          phone: merchant.phone,
+          address: merchant.address,
+          open_time: merchant.open_time,
+          close_time: merchant.close_time,
+          business_category: merchant.business_category,
+          business_description: merchant.business_description,
+          is_open: merchant.is_open,
+          status: merchant.status,
+        }}
+        onSuccess={fetchMerchantData}
+      />
 
-      {/* Assign Package Dialog */}
-      {merchant && (
-        <AssignPackageDialog
-          open={packageDialogOpen}
-          onOpenChange={setPackageDialogOpen}
-          merchantId={merchant.id}
-          merchantName={merchant.name}
-          classificationPrice={merchant.classification_price}
-          onSuccess={fetchMerchantData}
-        />
-      )}
+      <AssignPackageDialog
+        open={packageDialogOpen}
+        onOpenChange={setPackageDialogOpen}
+        merchantId={id || ''}
+        merchantName={merchant.name}
+        onSuccess={fetchMerchantData}
+      />
     </AdminLayout>
   );
 }
