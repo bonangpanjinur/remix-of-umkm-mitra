@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MapPin, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,6 +38,7 @@ export function CheckoutAddressForm({
 }: CheckoutAddressFormProps) {
   const { user } = useAuth();
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileWasEmpty, setProfileWasEmpty] = useState(false);
 
   // Load profile data on mount
   useEffect(() => {
@@ -52,10 +53,14 @@ export function CheckoutAddressForm({
           .single();
 
         if (profile) {
+          // Check if profile address is empty
+          const profileHasAddress = profile.province_id || profile.city_id || profile.district_id;
+          setProfileWasEmpty(!profileHasAddress);
+          
           // Auto-fill from profile if checkout form is empty
           const hasExistingData = value.name || value.phone || value.address.province;
           
-          if (!hasExistingData) {
+          if (!hasExistingData && profileHasAddress) {
             const addressData: AddressData = {
               province: profile.province_id || '',
               provinceName: profile.province_name || '',
@@ -75,6 +80,13 @@ export function CheckoutAddressForm({
               location: value.location,
               fullAddress: formatFullAddress(addressData),
             });
+          } else if (!hasExistingData) {
+            // Just fill name and phone if available
+            onChange({
+              ...value,
+              name: profile.full_name || '',
+              phone: profile.phone || '',
+            });
           }
         }
         setProfileLoaded(true);
@@ -85,7 +97,39 @@ export function CheckoutAddressForm({
     };
 
     loadProfile();
-  }, [user, profileLoaded, onChange, value]);
+  }, [user, profileLoaded]);
+
+  // Save address to profile if profile was empty
+  const saveAddressToProfile = useCallback(async (addressData: CheckoutAddressData) => {
+    if (!user || !profileWasEmpty) return;
+    
+    // Only save if we have complete address data
+    if (!addressData.address.province || !addressData.address.city) return;
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          full_name: addressData.name || undefined,
+          phone: addressData.phone || undefined,
+          province_id: addressData.address.province,
+          province_name: addressData.address.provinceName,
+          city_id: addressData.address.city,
+          city_name: addressData.address.cityName,
+          district_id: addressData.address.district || null,
+          district_name: addressData.address.districtName || null,
+          village_id: addressData.address.village || null,
+          village_name: addressData.address.villageName || null,
+          address_detail: addressData.address.detail || null,
+        })
+        .eq('user_id', user.id);
+      
+      // Mark as saved so we don't save again
+      setProfileWasEmpty(false);
+    } catch (error) {
+      console.error('Error saving address to profile:', error);
+    }
+  }, [user, profileWasEmpty]);
 
   const handleNameChange = (name: string) => {
     onChange({ ...value, name });
@@ -96,11 +140,17 @@ export function CheckoutAddressForm({
   };
 
   const handleAddressChange = (address: AddressData) => {
-    onChange({
+    const newData = {
       ...value,
       address,
       fullAddress: formatFullAddress(address),
-    });
+    };
+    onChange(newData);
+    
+    // Auto-save to profile if profile was empty and we have complete address
+    if (profileWasEmpty && address.province && address.city) {
+      saveAddressToProfile(newData);
+    }
   };
 
   const handleLocationChange = (location: { lat: number; lng: number }) => {
