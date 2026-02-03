@@ -1,11 +1,22 @@
-import { useState, useEffect } from 'react';
-import { Receipt, Eye, MoreHorizontal, Package, Truck, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { 
+  Receipt, 
+  Eye, 
+  MoreHorizontal, 
+  Package, 
+  Truck, 
+  AlertCircle, 
+  TrendingUp, 
+  Clock, 
+  CheckCircle2
+} from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
 import { CourierAssignDialog } from '@/components/admin/CourierAssignDialog';
 import { OrderDetailsDialog } from '@/components/order/OrderDetailsDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { StatsCard } from '@/components/admin/StatsCard';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, cn } from '@/lib/utils';
 
 interface OrderItem {
   id: string;
@@ -69,6 +80,22 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     fetchOrders();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('admin-orders-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', table: 'orders' },
+        () => {
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const viewOrderDetail = async (order: OrderRow) => {
@@ -98,9 +125,6 @@ export default function AdminOrdersPage() {
 
       if (error) throw error;
       
-      setOrders(orders.map(o => 
-        o.id === orderId ? { ...o, status: newStatus } : o
-      ));
       toast.success('Status pesanan diperbarui');
       setDetailDialogOpen(false);
     } catch (error) {
@@ -111,6 +135,37 @@ export default function AdminOrdersPage() {
   const openAssignDialog = (order: OrderRow) => {
     setSelectedOrder(order);
     setCourierAssignDialogOpen(true);
+  };
+
+  const handleExport = (data: OrderRow[]) => {
+    if (data.length === 0) return;
+    
+    const headers = ['ID', 'Merchant', 'Pelanggan', 'Total', 'Status', 'Pembayaran', 'Tanggal'];
+    const csvData = data.map(o => [
+      o.id,
+      o.merchants?.name || '-',
+      o.delivery_name || '-',
+      o.total,
+      o.status,
+      o.payment_status || '-',
+      new Date(o.created_at).toLocaleString('id-ID')
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `pesanan-umkm-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Data pesanan berhasil diekspor');
   };
 
   const getStatusBadge = (status: string) => {
@@ -140,33 +195,51 @@ export default function AdminOrdersPage() {
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
+  const stats = useMemo(() => {
+    const totalRevenue = orders
+      .filter(o => o.status === 'DONE' && o.payment_status === 'PAID')
+      .reduce((acc, curr) => acc + curr.total, 0);
+    
+    return {
+      total: orders.length,
+      new: orders.filter(o => o.status === 'NEW').length,
+      processing: orders.filter(o => ['CONFIRMED', 'PROCESSED', 'SENT'].includes(o.status)).length,
+      done: orders.filter(o => o.status === 'DONE').length,
+      revenue: totalRevenue
+    };
+  }, [orders]);
+
   const columns = [
     {
       key: 'id',
       header: 'ID Pesanan',
       render: (item: OrderRow) => (
-        <span className="font-mono text-sm">#{item.id.slice(0, 8).toUpperCase()}</span>
+        <span className="font-mono text-xs">#{item.id.slice(0, 8).toUpperCase()}</span>
       ),
     },
     {
       key: 'merchant',
       header: 'Merchant',
-      render: (item: OrderRow) => item.merchants?.name || '-',
+      render: (item: OrderRow) => (
+        <span className="font-medium text-sm">{item.merchants?.name || '-'}</span>
+      ),
     },
     {
       key: 'customer',
       header: 'Pelanggan',
       render: (item: OrderRow) => (
         <div>
-          <p className="font-medium">{item.delivery_name || 'Pelanggan'}</p>
-          <p className="text-xs text-muted-foreground">{item.delivery_phone || '-'}</p>
+          <p className="font-medium text-sm">{item.delivery_name || 'Pelanggan'}</p>
+          <p className="text-[10px] text-muted-foreground">{item.delivery_phone || '-'}</p>
         </div>
       ),
     },
     {
       key: 'total',
       header: 'Total',
-      render: (item: OrderRow) => formatPrice(item.total),
+      render: (item: OrderRow) => (
+        <span className="font-semibold">{formatPrice(item.total)}</span>
+      ),
     },
     {
       key: 'payment_status',
@@ -181,7 +254,15 @@ export default function AdminOrdersPage() {
     {
       key: 'created_at',
       header: 'Tanggal',
-      render: (item: OrderRow) => new Date(item.created_at).toLocaleDateString('id-ID'),
+      render: (item: OrderRow) => (
+        <span className="text-xs text-muted-foreground">
+          {new Date(item.created_at).toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          })}
+        </span>
+      ),
     },
     {
       key: 'actions',
@@ -189,11 +270,11 @@ export default function AdminOrdersPage() {
       render: (item: OrderRow) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem onClick={() => viewOrderDetail(item)}>
               <Eye className="h-4 w-4 mr-2" />
               Lihat Detail
@@ -228,6 +309,7 @@ export default function AdminOrdersPage() {
             )}
             {item.status === 'SENT' && (
               <DropdownMenuItem onClick={() => updateOrderStatus(item.id, 'DONE')}>
+                <CheckCircle2 className="h-4 w-4 mr-2" />
                 Selesaikan
               </DropdownMenuItem>
             )}
@@ -279,36 +361,51 @@ export default function AdminOrdersPage() {
     },
   ];
 
-  const newOrdersCount = orders.filter(o => o.status === 'NEW').length;
-  const unpaidCount = orders.filter(o => o.payment_status === 'UNPAID' || o.payment_status === 'PENDING').length;
-
   return (
-    <AdminLayout title="Manajemen Pesanan" subtitle="Kelola semua pesanan">
-      <div className="flex items-center gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <Receipt className="h-5 w-5 text-primary" />
-          <span className="text-muted-foreground text-sm">{orders.length} pesanan</span>
+    <AdminLayout title="Manajemen Pesanan" subtitle="Pantau dan kelola semua transaksi masuk">
+      <div className="space-y-6">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatsCard
+            title="Total Pesanan"
+            value={stats.total}
+            icon={<Receipt className="h-5 w-5" />}
+            description="Semua pesanan masuk"
+          />
+          <StatsCard
+            title="Pesanan Baru"
+            value={stats.new}
+            icon={<Clock className="h-5 w-5" />}
+            description="Perlu segera diproses"
+            className={cn(stats.new > 0 && "border-primary/50 bg-primary/5")}
+          />
+          <StatsCard
+            title="Sedang Diproses"
+            value={stats.processing}
+            icon={<Package className="h-5 w-5" />}
+            description="Dalam pengiriman/proses"
+          />
+          <StatsCard
+            title="Total Pendapatan"
+            value={formatPrice(stats.revenue)}
+            icon={<TrendingUp className="h-5 w-5" />}
+            description="Dari pesanan selesai"
+          />
         </div>
-        {newOrdersCount > 0 && (
-          <Badge variant="info">{newOrdersCount} baru</Badge>
-        )}
-        {unpaidCount > 0 && (
-          <Badge variant="warning">
-            <AlertCircle className="h-3 w-3 mr-1" />
-            {unpaidCount} belum bayar
-          </Badge>
-        )}
-      </div>
 
-      <DataTable
-        data={orders}
-        columns={columns}
-        searchKey="delivery_name"
-        searchPlaceholder="Cari nama pelanggan..."
-        filters={filters}
-        loading={loading}
-        emptyMessage="Belum ada pesanan"
-      />
+        <div className="bg-card border border-border rounded-xl p-6">
+          <DataTable
+            data={orders}
+            columns={columns}
+            searchPlaceholder="Cari ID, pelanggan, atau merchant..."
+            searchKeys={['id', 'delivery_name']} // Merchant name is nested, so we'll handle it if needed or just use these
+            filters={filters}
+            loading={loading}
+            onExport={handleExport}
+            emptyMessage="Belum ada pesanan yang sesuai"
+          />
+        </div>
+      </div>
 
       <OrderDetailsDialog
         open={detailDialogOpen}

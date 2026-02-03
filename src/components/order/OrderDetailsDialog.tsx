@@ -7,7 +7,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatPrice } from '@/lib/utils';
-import { User, Phone, MapPin, CreditCard, Check, X, Truck, Package } from 'lucide-react';
+import { User, Phone, MapPin, CreditCard, Check, X, Truck, Printer } from 'lucide-react';
 
 interface OrderItem {
   id: string;
@@ -57,15 +57,113 @@ export function OrderDetailsDialog({
 }: OrderDetailsDialogProps) {
   if (!order) return null;
 
+  const handlePrint = () => {
+    const printContent = document.getElementById('order-print-content');
+    if (!printContent) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice #${order.id.slice(0, 8).toUpperCase()}</title>
+          <style>
+            body { font-family: sans-serif; padding: 20px; color: #333; }
+            .header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+            .section-title { font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { text-align: left; border-bottom: 1px solid #eee; padding: 10px 0; }
+            td { padding: 10px 0; border-bottom: 1px solid #f9f9f9; }
+            .totals { text-align: right; }
+            .total-row { font-weight: bold; font-size: 1.2em; }
+            .footer { margin-top: 40px; text-align: center; font-size: 0.8em; color: #888; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>INVOICE</h1>
+            <p>#${order.id.toUpperCase()}</p>
+            <p>Tanggal: ${new Date(order.created_at).toLocaleString('id-ID')}</p>
+          </div>
+          
+          <div class="info-grid">
+            <div>
+              <div class="section-title">Merchant</div>
+              <p><strong>${order.merchants?.name || '-'}</strong></p>
+            </div>
+            <div>
+              <div class="section-title">Pelanggan</div>
+              <p>${order.delivery_name || 'Pelanggan'}</p>
+              <p>${order.delivery_phone || '-'}</p>
+              <p>${order.delivery_address || '-'}</p>
+            </div>
+          </div>
+
+          <div class="section-title">Item Pesanan</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Produk</th>
+                <th>Harga</th>
+                <th>Qty</th>
+                <th style="text-align: right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orderItems.map(item => `
+                <tr>
+                  <td>${item.product_name}</td>
+                  <td>${formatPrice(item.product_price)}</td>
+                  <td>${item.quantity}</td>
+                  <td style="text-align: right">${formatPrice(item.subtotal)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <p>Subtotal: ${formatPrice(order.subtotal)}</p>
+            <p>Ongkos Kirim: ${formatPrice(order.shipping_cost)}</p>
+            <p class="total-row">Total: ${formatPrice(order.total)}</p>
+          </div>
+
+          ${order.notes ? `
+            <div style="margin-top: 20px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+              <div class="section-title">Catatan</div>
+              <p>${order.notes}</p>
+            </div>
+          ` : ''}
+
+          <div class="footer">
+            <p>Terima kasih telah berbelanja di UMKM Mitra</p>
+          </div>
+          <script>
+            window.onload = () => {
+              window.print();
+              window.onafterprint = () => window.close();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader>
+        <DialogHeader className="flex flex-row items-center justify-between space-y-0">
           <DialogTitle>
             Detail Pesanan #{order.id.slice(0, 8).toUpperCase()}
           </DialogTitle>
+          <Button variant="outline" size="sm" onClick={handlePrint}>
+            <Printer className="h-4 w-4 mr-2" />
+            Cetak
+          </Button>
         </DialogHeader>
-        <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
+        <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto" id="order-print-content">
           {/* Status Row */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
