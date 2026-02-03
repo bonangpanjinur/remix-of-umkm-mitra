@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, MapPin, Phone, Mail, User, Check, X, Edit, 
-  MoreHorizontal, Store, Camera, Users, Calendar, Globe
+  MoreHorizontal, Store, Camera, Users, Calendar, Globe, Trash2
 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -17,9 +17,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { approveVillage, rejectVillage } from '@/lib/adminApi';
+import { approveVillage, rejectVillage, deleteVillage } from '@/lib/adminApi';
 import { VillageEditDialog } from '@/components/admin/VillageEditDialog';
 
 interface VillageDetail {
@@ -63,6 +73,7 @@ export default function AdminVillageDetailPage() {
   const [tourismSpots, setTourismSpots] = useState<TourismSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [stats, setStats] = useState({
     totalMerchants: 0,
     activeMerchants: 0,
@@ -166,6 +177,18 @@ export default function AdminVillageDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+    
+    const success = await deleteVillage(id);
+    if (success) {
+      toast.success('Desa wisata berhasil dihapus');
+      navigate('/admin/villages');
+    } else {
+      toast.error('Gagal menghapus desa wisata');
+    }
+  };
+
   const getStatusBadge = (regStatus: string, isActive: boolean) => {
     if (regStatus === 'PENDING') {
       return <Badge variant="warning">Menunggu Verifikasi</Badge>;
@@ -240,10 +263,34 @@ export default function AdminVillageDetailPage() {
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Data Desa
               </DropdownMenuItem>
+              <DropdownMenuItem 
+                className="text-destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Hapus Desa
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak dapat dibatalkan. Desa <strong>{village.name}</strong> akan dihapus secara permanen dari sistem.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Village Header Card */}
       <Card className="mb-6">

@@ -327,3 +327,16 @@ export async function deleteMerchant(id: string): Promise<boolean> {
   }
   return true;
 }
+
+export async function deleteVillage(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('villages')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting village:', error);
+    return false;
+  }
+  return true;
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Eye, Check, X, MoreHorizontal } from 'lucide-react';
+import { MapPin, Eye, Check, X, MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -11,9 +11,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { approveVillage, rejectVillage } from '@/lib/adminApi';
+import { approveVillage, rejectVillage, deleteVillage } from '@/lib/adminApi';
+import { VillageAddDialog } from '@/components/admin/VillageAddDialog';
+import { VillageEditDialog } from '@/components/admin/VillageEditDialog';
 
 interface VillageRow {
   id: string;
@@ -21,8 +33,10 @@ interface VillageRow {
   district: string;
   regency: string;
   subdistrict: string | null;
+  description: string | null;
   contact_name: string | null;
   contact_phone: string | null;
+  contact_email: string | null;
   registration_status: string;
   is_active: boolean;
   registered_at: string | null;
@@ -32,12 +46,19 @@ export default function AdminVillagesPage() {
   const navigate = useNavigate();
   const [villages, setVillages] = useState<VillageRow[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Dialog states
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedVillage, setSelectedVillage] = useState<VillageRow | null>(null);
 
   const fetchVillages = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('villages')
-        .select('id, name, district, regency, subdistrict, contact_name, contact_phone, registration_status, is_active, registered_at')
+        .select('id, name, district, regency, subdistrict, description, contact_name, contact_phone, contact_email, registration_status, is_active, registered_at')
         .order('registered_at', { ascending: false });
 
       if (error) throw error;
@@ -74,6 +95,19 @@ export default function AdminVillagesPage() {
       fetchVillages();
     } else {
       toast.error('Gagal menolak desa wisata');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedVillage) return;
+    
+    const success = await deleteVillage(selectedVillage.id);
+    if (success) {
+      toast.success('Desa wisata berhasil dihapus');
+      fetchVillages();
+      setDeleteDialogOpen(false);
+    } else {
+      toast.error('Gagal menghapus desa wisata');
     }
   };
 
@@ -149,6 +183,13 @@ export default function AdminVillagesPage() {
               <Eye className="h-4 w-4 mr-2" />
               Lihat Detail
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              setSelectedVillage(item);
+              setEditDialogOpen(true);
+            }}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
             {item.registration_status === 'PENDING' && (
               <>
                 <DropdownMenuItem onClick={() => handleApprove(item.id)}>
@@ -161,6 +202,16 @@ export default function AdminVillagesPage() {
                 </DropdownMenuItem>
               </>
             )}
+            <DropdownMenuItem 
+              className="text-destructive"
+              onClick={() => {
+                setSelectedVillage(item);
+                setDeleteDialogOpen(true);
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Hapus
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -180,7 +231,16 @@ export default function AdminVillagesPage() {
   ];
 
   return (
-    <AdminLayout title="Manajemen Desa Wisata" subtitle="Kelola semua desa wisata yang terdaftar">
+    <AdminLayout 
+      title="Manajemen Desa Wisata" 
+      subtitle="Kelola semua desa wisata yang terdaftar"
+      rightElement={
+        <Button onClick={() => setAddDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Tambah Desa
+        </Button>
+      }
+    >
       <div className="flex items-center gap-2 mb-4">
         <MapPin className="h-5 w-5 text-primary" />
         <span className="text-muted-foreground text-sm">{villages.length} desa terdaftar</span>
@@ -195,6 +255,49 @@ export default function AdminVillagesPage() {
         loading={loading}
         emptyMessage="Belum ada desa wisata terdaftar"
       />
+
+      <VillageAddDialog 
+        open={addDialogOpen} 
+        onOpenChange={setAddDialogOpen} 
+        onSuccess={fetchVillages} 
+      />
+
+      {selectedVillage && (
+        <VillageEditDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          villageId={selectedVillage.id}
+          initialData={{
+            name: selectedVillage.name,
+            district: selectedVillage.district,
+            regency: selectedVillage.regency,
+            subdistrict: selectedVillage.subdistrict,
+            description: selectedVillage.description,
+            contact_name: selectedVillage.contact_name,
+            contact_phone: selectedVillage.contact_phone,
+            contact_email: selectedVillage.contact_email,
+            is_active: selectedVillage.is_active,
+          }}
+          onSuccess={fetchVillages}
+        />
+      )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak dapat dibatalkan. Desa <strong>{selectedVillage?.name}</strong> akan dihapus secara permanen dari sistem.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
