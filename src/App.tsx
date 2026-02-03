@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { WhitelabelProvider } from "@/contexts/WhitelabelContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { InstallBanner } from "@/components/pwa/InstallBanner";
+import { SEO } from "@/components/SEO";
 import { OfflineIndicator } from "@/components/pwa/OfflineIndicator";
 import { UpdatePrompt } from "@/components/pwa/UpdatePrompt";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
@@ -121,6 +122,7 @@ const App = () => (
               <Sonner />
               <OfflineIndicator />
               <BrowserRouter>
+                <SEO />
                 <InstallBanner />
                 <UpdatePrompt />
               <Routes>
