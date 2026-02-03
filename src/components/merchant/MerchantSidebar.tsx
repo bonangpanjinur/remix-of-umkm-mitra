@@ -15,7 +15,8 @@ import {
   Zap,
   Ticket,
   Calendar,
-  Eye
+  Eye,
+  RotateCcw
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +34,7 @@ export function MerchantSidebar() {
   const { user } = useAuth();
   const [pendingOrders, setPendingOrders] = useState(0);
   const [unrepliedReviews, setUnrepliedReviews] = useState(0);
+  const [pendingRefunds, setPendingRefunds] = useState(0);
 
   useEffect(() => {
     const fetchBadges = async () => {
@@ -42,7 +44,7 @@ export function MerchantSidebar() {
       const { data: merchant } = await supabase
         .from('merchants')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('owner_id', user.id)
         .maybeSingle();
 
       if (merchant) {
@@ -63,6 +65,15 @@ export function MerchantSidebar() {
           .is('merchant_reply', null);
         
         setUnrepliedReviews(reviewsCount || 0);
+
+        // Pending refunds
+        const { count: refundsCount } = await supabase
+          .from('refund_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('merchant_id', merchant.id)
+          .eq('status', 'PENDING');
+        
+        setPendingRefunds(refundsCount || 0);
       }
     };
     fetchBadges();
@@ -72,6 +83,7 @@ export function MerchantSidebar() {
     { label: 'Dashboard', href: '/merchant', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Produk', href: '/merchant/products', icon: <Package className="h-4 w-4" /> },
     { label: 'Pesanan', href: '/merchant/orders', icon: <Receipt className="h-4 w-4" />, badge: pendingOrders },
+    { label: 'Refund', href: '/merchant/refunds', icon: <RotateCcw className="h-4 w-4" />, badge: pendingRefunds },
     { label: 'Flash Sale', href: '/merchant/flash-sale', icon: <Zap className="h-4 w-4" /> },
     { label: 'Jadwal Promo', href: '/merchant/scheduled-promo', icon: <Calendar className="h-4 w-4" /> },
     { label: 'Voucher', href: '/merchant/vouchers', icon: <Ticket className="h-4 w-4" /> },
@@ -93,7 +105,7 @@ export function MerchantSidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
           const isActive = location.pathname === item.href;
           

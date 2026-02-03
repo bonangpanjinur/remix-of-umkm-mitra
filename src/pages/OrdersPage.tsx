@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Receipt, ShoppingBag, Package, Truck, CheckCircle, XCircle, Clock, Star, X } from 'lucide-react';
+import { Receipt, ShoppingBag, Package, Truck, CheckCircle, XCircle, Clock, Star, X, RotateCcw } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { useCart } from '@/contexts/CartContext';
 import { supabase } from '@/integrations/supabase/client';
 import { formatPrice } from '@/lib/utils';
 import { OrderCancelDialog } from '@/components/order/OrderCancelDialog';
+import { RefundRequestDialog } from '@/components/order/RefundRequestDialog';
 
 interface Order {
   id: string;
@@ -18,6 +19,7 @@ interface Order {
   created_at: string;
   delivery_type: string;
   merchant_name?: string;
+  merchant_id?: string;
   items_count?: number;
   courier_id?: string | null;
 }
@@ -31,6 +33,7 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; col
   DELIVERED: { label: 'Terkirim', icon: CheckCircle, color: 'text-success' },
   DONE: { label: 'Selesai', icon: CheckCircle, color: 'text-success' },
   CANCELED: { label: 'Dibatalkan', icon: XCircle, color: 'text-destructive' },
+  REFUNDED: { label: 'Refund', icon: RotateCcw, color: 'text-destructive' },
 };
 
 export default function OrdersPage() {
@@ -40,7 +43,8 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -66,6 +70,7 @@ export default function OrdersPage() {
           created_at,
           delivery_type,
           courier_id,
+          merchant_id,
           merchants (
             name
           ),
@@ -85,6 +90,7 @@ export default function OrdersPage() {
         created_at: order.created_at,
         delivery_type: order.delivery_type,
         courier_id: order.courier_id,
+        merchant_id: order.merchant_id,
         merchant_name: order.merchants?.name || 'Toko',
         items_count: order.order_items?.length || 0,
       }));
@@ -98,8 +104,16 @@ export default function OrdersPage() {
   };
 
   const openCancelDialog = (orderId: string) => {
-    setSelectedOrderId(orderId);
-    setCancelDialogOpen(true);
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      setSelectedOrder(order);
+      setCancelDialogOpen(true);
+    }
+  };
+
+  const openRefundDialog = (order: Order) => {
+    setSelectedOrder(order);
+    setRefundDialogOpen(true);
   };
 
   const handleOrderCancelled = () => {
@@ -254,17 +268,32 @@ export default function OrdersPage() {
                           </Button>
                         )}
                         {(order.status === 'DONE' || order.status === 'DELIVERED') && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/orders/${order.id}/review`);
-                            }}
-                          >
-                            <Star className="h-3 w-3 mr-1" />
-                            Ulasan
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="h-8 px-2 text-[10px]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openRefundDialog(order);
+                              }}
+                            >
+                              <RotateCcw className="h-3 w-3 mr-1" />
+                              Refund
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="h-8 px-2 text-[10px]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/orders/${order.id}/review`);
+                              }}
+                            >
+                              <Star className="h-3 w-3 mr-1" />
+                              Ulasan
+                            </Button>
+                          </div>
                         )}
                         <p className="font-bold text-primary">{formatPrice(order.total)}</p>
                       </div>
@@ -278,12 +307,24 @@ export default function OrdersPage() {
       </div>
       
       {/* Cancel Dialog */}
-      {selectedOrderId && (
+      {selectedOrder && (
         <OrderCancelDialog
-          orderId={selectedOrderId}
+          orderId={selectedOrder.id}
           open={cancelDialogOpen}
           onOpenChange={setCancelDialogOpen}
           onCancelled={handleOrderCancelled}
+        />
+      )}
+
+      {/* Refund Dialog */}
+      {selectedOrder && (
+        <RefundRequestDialog
+          orderId={selectedOrder.id}
+          orderTotal={selectedOrder.total}
+          merchantId={selectedOrder.merchant_id || ''}
+          open={refundDialogOpen}
+          onOpenChange={setRefundDialogOpen}
+          onSuccess={fetchOrders}
         />
       )}
       

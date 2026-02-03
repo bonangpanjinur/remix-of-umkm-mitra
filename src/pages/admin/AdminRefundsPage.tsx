@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { RotateCcw, Check, X, Eye, Filter, Clock } from 'lucide-react';
+import { RotateCcw, Check, X, Eye, Filter, Clock, Search, Store } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -38,6 +39,7 @@ interface RefundRequest {
   id: string;
   orderId: string;
   buyerId: string;
+  merchantId: string;
   amount: number;
   reason: string;
   status: string;
@@ -46,12 +48,16 @@ interface RefundRequest {
   createdAt: string;
   orderTotal: number;
   buyerName: string;
+  merchantName: string;
+  evidenceUrls: string[];
+  refundType: string;
 }
 
 export default function AdminRefundsPage() {
   const [refunds, setRefunds] = useState<RefundRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedRefund, setSelectedRefund] = useState<RefundRequest | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [processDialogOpen, setProcessDialogOpen] = useState(false);
@@ -65,7 +71,7 @@ export default function AdminRefundsPage() {
       
       const { data, error } = await supabase
         .from('refund_requests')
-        .select('*, orders(total)')
+        .select('*, orders(total, merchants(name))')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -83,14 +89,18 @@ export default function AdminRefundsPage() {
         id: r.id,
         orderId: r.order_id,
         buyerId: r.buyer_id,
+        merchantId: r.merchant_id,
         amount: r.amount,
         reason: r.reason,
         status: r.status,
         adminNotes: r.admin_notes,
         processedAt: r.processed_at,
         createdAt: r.created_at,
-        orderTotal: (r.orders as { total: number } | null)?.total || 0,
+        orderTotal: (r.orders as any)?.total || 0,
         buyerName: profileMap.get(r.buyer_id) || 'Unknown',
+        merchantName: (r.orders as any)?.merchants?.name || 'Unknown Merchant',
+        evidenceUrls: r.evidence_urls || [],
+        refundType: r.refund_type || 'FULL',
       }));
 
       setRefunds(mapped);
@@ -157,9 +167,14 @@ export default function AdminRefundsPage() {
     }
   };
 
-  const filteredRefunds = refunds.filter(r => 
-    statusFilter === 'all' || r.status === statusFilter
-  );
+  const filteredRefunds = refunds.filter(r => {
+    const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+    const matchesSearch = 
+      r.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.buyerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.merchantName.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesStatus && matchesSearch;
+  });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -201,20 +216,31 @@ export default function AdminRefundsPage() {
         </div>
       </div>
 
-      {/* Filter */}
-      <div className="flex items-center gap-3 mb-6">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Status</SelectItem>
-            <SelectItem value="PENDING">Menunggu</SelectItem>
-            <SelectItem value="APPROVED">Disetujui</SelectItem>
-            <SelectItem value="REJECTED">Ditolak</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Filter & Search */}
+      <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cari Order ID, Pembeli, atau Merchant..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full md:w-48">
+              <SelectValue placeholder="Filter Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Status</SelectItem>
+              <SelectItem value="PENDING">Menunggu</SelectItem>
+              <SelectItem value="APPROVED">Disetujui</SelectItem>
+              <SelectItem value="REJECTED">Ditolak</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Table */}
@@ -229,8 +255,8 @@ export default function AdminRefundsPage() {
               <TableRow>
                 <TableHead>Order ID</TableHead>
                 <TableHead>Pembeli</TableHead>
+                <TableHead>Merchant</TableHead>
                 <TableHead>Jumlah</TableHead>
-                <TableHead>Alasan</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Tanggal</TableHead>
                 <TableHead className="text-right">Aksi</TableHead>
@@ -249,8 +275,13 @@ export default function AdminRefundsPage() {
                   <TableRow key={refund.id}>
                     <TableCell className="font-mono text-sm">{refund.orderId.slice(0, 8)}</TableCell>
                     <TableCell>{refund.buyerName}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Store className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-sm">{refund.merchantName}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="font-medium">{formatPrice(refund.amount)}</TableCell>
-                    <TableCell className="max-w-xs truncate">{refund.reason}</TableCell>
                     <TableCell>{getStatusBadge(refund.status)}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {format(new Date(refund.createdAt), 'dd MMM yyyy', { locale: idLocale })}
@@ -307,46 +338,67 @@ export default function AdminRefundsPage() {
 
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Detail Permintaan Refund</DialogTitle>
           </DialogHeader>
           {selectedRefund && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Order ID</p>
-                  <p className="font-mono">{selectedRefund.orderId.slice(0, 8)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Order</p>
-                  <p className="font-medium">{formatPrice(selectedRefund.orderTotal)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Jumlah Refund</p>
-                  <p className="font-medium text-primary">{formatPrice(selectedRefund.amount)}</p>
+                  <p className="font-mono">{selectedRefund.orderId}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
                   {getStatusBadge(selectedRefund.status)}
                 </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Pembeli</p>
+                  <p className="font-medium">{selectedRefund.buyerName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Merchant</p>
+                  <p className="font-medium">{selectedRefund.merchantName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Jumlah Refund</p>
+                  <p className="font-bold text-primary">{formatPrice(selectedRefund.amount)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Tipe Refund</p>
+                  <Badge variant="outline">{selectedRefund.refundType}</Badge>
+                </div>
               </div>
+
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Alasan Refund</p>
-                <p className="p-3 bg-secondary rounded-lg">{selectedRefund.reason}</p>
+                <div className="bg-muted p-3 rounded-lg text-sm">
+                  {selectedRefund.reason}
+                </div>
               </div>
+
+              {selectedRefund.evidenceUrls.length > 0 && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-2">Bukti Pendukung</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {selectedRefund.evidenceUrls.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noreferrer" className="aspect-square rounded-lg overflow-hidden border border-border hover:opacity-80 transition-opacity">
+                        <img src={url} alt={`Evidence ${i+1}`} className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {selectedRefund.adminNotes && (
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Catatan Admin</p>
-                  <p className="p-3 bg-secondary rounded-lg">{selectedRefund.adminNotes}</p>
+                  <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm border border-blue-100">
+                    {selectedRefund.adminNotes}
+                  </div>
                 </div>
               )}
-              <div className="text-sm text-muted-foreground">
-                Diajukan: {format(new Date(selectedRefund.createdAt), 'dd MMMM yyyy, HH:mm', { locale: idLocale })}
-                {selectedRefund.processedAt && (
-                  <> • Diproses: {format(new Date(selectedRefund.processedAt), 'dd MMMM yyyy, HH:mm', { locale: idLocale })}</>
-                )}
-              </div>
             </div>
           )}
         </DialogContent>
@@ -361,39 +413,29 @@ export default function AdminRefundsPage() {
             </DialogTitle>
             <DialogDescription>
               {processAction === 'approve' 
-                ? 'Refund akan diproses dan status pesanan akan diubah menjadi REFUNDED.'
-                : 'Jelaskan alasan penolakan refund.'}
+                ? 'Apakah Anda yakin ingin menyetujui permintaan refund ini? Saldo akan dikembalikan ke pembeli.'
+                : 'Berikan alasan mengapa permintaan refund ini ditolak.'}
             </DialogDescription>
           </DialogHeader>
-          {selectedRefund && (
-            <div className="space-y-4">
-              <div className="p-3 bg-secondary rounded-lg">
-                <p className="text-sm text-muted-foreground">Jumlah Refund</p>
-                <p className="text-xl font-bold">{formatPrice(selectedRefund.amount)}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Catatan {processAction === 'reject' ? '(wajib)' : '(opsional)'}
-                </label>
-                <Textarea
-                  value={adminNotes}
-                  onChange={(e) => setAdminNotes(e.target.value)}
-                  placeholder={processAction === 'approve' 
-                    ? 'Catatan tambahan...' 
-                    : 'Jelaskan alasan penolakan...'}
-                  rows={3}
-                />
-              </div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Catatan Admin</label>
+              <Textarea
+                placeholder="Masukkan catatan atau alasan..."
+                value={adminNotes}
+                onChange={(e) => setAdminNotes(e.target.value)}
+                rows={4}
+              />
             </div>
-          )}
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setProcessDialogOpen(false)}>
               Batal
             </Button>
-            <Button 
+            <Button
               variant={processAction === 'approve' ? 'default' : 'destructive'}
               onClick={handleProcess}
-              disabled={actionLoading || (processAction === 'reject' && !adminNotes.trim())}
+              disabled={actionLoading}
             >
               {actionLoading ? 'Memproses...' : processAction === 'approve' ? 'Setujui' : 'Tolak'}
             </Button>
