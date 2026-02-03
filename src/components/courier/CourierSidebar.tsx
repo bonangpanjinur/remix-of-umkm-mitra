@@ -24,7 +24,7 @@ export function CourierSidebar() {
   ];
 
   return (
-    <div className="w-64 min-h-screen bg-card border-r border-border flex flex-col">
+    <div className="w-64 h-screen bg-card border-r border-border flex flex-col sticky top-0">
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <Bike className="h-6 w-6 text-primary" />
@@ -32,7 +32,7 @@ export function CourierSidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border">
         {menuItems.map((item) => {
           const isActive = location.pathname === item.href;
           
