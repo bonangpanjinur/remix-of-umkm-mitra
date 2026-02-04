@@ -69,12 +69,8 @@ export default function CheckoutPage() {
     }
   }, [user]);
 
-  // Get merchant location from first item (simplified - assumes single merchant)
-  const merchantLocation = useMemo(() => {
-    // In a real app, you'd fetch this from merchant data
-    // For now, return null - will be enhanced when merchant has location
-    return null;
-  }, [items]);
+  // Get merchant location state (will be loaded after merchantIds are computed)
+  const [merchantLocation, setMerchantLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const subtotal = getCartTotal();
   
@@ -158,6 +154,29 @@ export default function CheckoutPage() {
   // Check merchant operating hours
   const [merchantOperatingInfo, setMerchantOperatingInfo] = useState<Record<string, MerchantOperatingInfo>>({});
   const [operatingHoursLoading, setOperatingHoursLoading] = useState(false);
+
+  // Load merchant location for shipping calculation
+  useEffect(() => {
+    const fetchMerchantLocation = async () => {
+      if (merchantIds.length === 0) return;
+      
+      // Get location of first merchant (simplified - assumes single merchant checkout)
+      const { data } = await supabase
+        .from('merchants')
+        .select('location_lat, location_lng')
+        .eq('id', merchantIds[0])
+        .single();
+      
+      if (data?.location_lat && data?.location_lng) {
+        setMerchantLocation({
+          lat: Number(data.location_lat),
+          lng: Number(data.location_lng),
+        });
+      }
+    };
+    
+    fetchMerchantLocation();
+  }, [merchantIds.join(',')]);
 
   useEffect(() => {
     const loadMerchantOperatingHours = async () => {
