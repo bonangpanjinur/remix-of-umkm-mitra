@@ -19,206 +19,7 @@ EXCEPTION
 END $$;
 
 -- =====================================================
--- PART 2: HELPER FUNCTIONS (SECURITY DEFINER)
--- =====================================================
-
--- Check if user is admin
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.user_roles
-    WHERE user_id = auth.uid() AND role = 'admin'::app_role
-  );
-$$;
-
--- Check if user is verifikator
-CREATE OR REPLACE FUNCTION public.is_verifikator()
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.user_roles
-    WHERE user_id = auth.uid() AND role = 'verifikator'::app_role
-  );
-$$;
-
--- Check if user has specific role
-DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role);
-CREATE OR REPLACE FUNCTION public.has_role(user_uuid uuid, check_role app_role)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.user_roles
-    WHERE user_id = user_uuid AND role = check_role
-  );
-$$;
-
--- Check if user is order merchant
-DROP FUNCTION IF EXISTS public.is_order_merchant(uuid, uuid);
-CREATE OR REPLACE FUNCTION public.is_order_merchant(check_user_id uuid, check_merchant_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.merchants
-    WHERE id = check_merchant_id AND user_id = check_user_id
-  );
-$$;
-
--- Overload for order_id
-DROP FUNCTION IF EXISTS public.is_order_merchant(uuid);
-CREATE OR REPLACE FUNCTION public.is_order_merchant(check_order_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.orders o
-    JOIN public.merchants m ON o.merchant_id = m.id
-    WHERE o.id = check_order_id AND m.user_id = auth.uid()
-  );
-$$;
-
--- Check if user is courier owner
-DROP FUNCTION IF EXISTS public.is_courier_owner(uuid, uuid);
-CREATE OR REPLACE FUNCTION public.is_courier_owner(check_user_id uuid, check_courier_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.couriers
-    WHERE id = check_courier_id AND user_id = check_user_id
-  );
-$$;
-
--- Check if user is order courier
-DROP FUNCTION IF EXISTS public.is_order_courier(uuid);
-CREATE OR REPLACE FUNCTION public.is_order_courier(check_order_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.orders o
-    JOIN public.couriers c ON o.courier_id = c.id
-    WHERE o.id = check_order_id AND c.user_id = auth.uid()
-  );
-$$;
-
--- Get quota cost based on price tier
-DROP FUNCTION IF EXISTS public.get_quota_cost(integer);
-CREATE OR REPLACE FUNCTION public.get_quota_cost(product_price integer)
-RETURNS integer
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  cost integer := 1;
-BEGIN
-  SELECT credit_cost INTO cost
-  FROM public.quota_tiers
-  WHERE is_active = true
-    AND product_price >= min_price
-    AND (max_price IS NULL OR product_price <= max_price)
-  ORDER BY min_price DESC
-  LIMIT 1;
-  
-  RETURN COALESCE(cost, 1);
-END;
-$$;
-
--- Use merchant quota credits
-DROP FUNCTION IF EXISTS public.use_merchant_quota(uuid, integer);
-CREATE OR REPLACE FUNCTION public.use_merchant_quota(p_merchant_id uuid, p_credits integer)
-RETURNS boolean
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_subscription_id uuid;
-  v_remaining integer;
-BEGIN
-  -- Get active subscription
-  SELECT id, (transaction_quota - used_quota) INTO v_subscription_id, v_remaining
-  FROM public.merchant_subscriptions
-  WHERE merchant_id = p_merchant_id
-    AND status = 'ACTIVE'
-    AND expired_at > now()
-  ORDER BY expired_at DESC
-  LIMIT 1;
-  
-  IF v_subscription_id IS NULL THEN
-    RETURN false;
-  END IF;
-  
-  IF v_remaining < p_credits THEN
-    RETURN false;
-  END IF;
-  
-  -- Deduct credits
-  UPDATE public.merchant_subscriptions
-  SET used_quota = used_quota + p_credits,
-      updated_at = now()
-  WHERE id = v_subscription_id;
-  
-  RETURN true;
-END;
-$$;
-
--- Auto-update timestamps
-CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Auto-create profile on signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  INSERT INTO public.profiles (user_id, full_name)
-  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', 'User'));
-  
-  INSERT INTO public.user_roles (user_id, role)
-  VALUES (NEW.id, 'buyer');
-  
-  RETURN NEW;
-END;
-$$;
-
--- =====================================================
--- PART 3: CORE TABLES
+-- PART 2: CORE TABLES
 -- =====================================================
 
 -- User Roles
@@ -906,6 +707,206 @@ CREATE TABLE IF NOT EXISTS public.rate_limits (
   created_at timestamptz DEFAULT now()
 );
 
+-- =====================================================
+-- PART 3: HELPER FUNCTIONS (SECURITY DEFINER)
+-- =====================================================
+
+-- Check if user is admin
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid() AND role = 'admin'::app_role
+  );
+$$;
+
+-- Check if user is verifikator
+CREATE OR REPLACE FUNCTION public.is_verifikator()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = auth.uid() AND role = 'verifikator'::app_role
+  );
+$$;
+
+-- Check if user has specific role
+DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role);
+CREATE OR REPLACE FUNCTION public.has_role(user_uuid uuid, check_role app_role)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = user_uuid AND role = check_role
+  );
+$$;
+
+-- Check if user is order merchant
+DROP FUNCTION IF EXISTS public.is_order_merchant(uuid, uuid);
+CREATE OR REPLACE FUNCTION public.is_order_merchant(check_user_id uuid, check_merchant_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.merchants
+    WHERE id = check_merchant_id AND user_id = check_user_id
+  );
+$$;
+
+-- Overload for order_id
+DROP FUNCTION IF EXISTS public.is_order_merchant(uuid);
+CREATE OR REPLACE FUNCTION public.is_order_merchant(check_order_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.merchants m ON o.merchant_id = m.id
+    WHERE o.id = check_order_id AND m.user_id = auth.uid()
+  );
+$$;
+
+-- Check if user is courier owner
+DROP FUNCTION IF EXISTS public.is_courier_owner(uuid, uuid);
+CREATE OR REPLACE FUNCTION public.is_courier_owner(check_user_id uuid, check_courier_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.couriers
+    WHERE id = check_courier_id AND user_id = check_user_id
+  );
+$$;
+
+-- Check if user is order courier
+DROP FUNCTION IF EXISTS public.is_order_courier(uuid);
+CREATE OR REPLACE FUNCTION public.is_order_courier(check_order_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.orders o
+    JOIN public.couriers c ON o.courier_id = c.id
+    WHERE o.id = check_order_id AND c.user_id = auth.uid()
+  );
+$$;
+
+-- Get quota cost based on price tier
+DROP FUNCTION IF EXISTS public.get_quota_cost(integer);
+CREATE OR REPLACE FUNCTION public.get_quota_cost(product_price integer)
+RETURNS integer
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  cost integer := 1;
+BEGIN
+  SELECT credit_cost INTO cost
+  FROM public.quota_tiers
+  WHERE is_active = true
+    AND product_price >= min_price
+    AND (max_price IS NULL OR product_price <= max_price)
+  ORDER BY min_price DESC
+  LIMIT 1;
+  
+  RETURN COALESCE(cost, 1);
+END;
+$$;
+
+-- Use merchant quota credits
+DROP FUNCTION IF EXISTS public.use_merchant_quota(uuid, integer);
+CREATE OR REPLACE FUNCTION public.use_merchant_quota(p_merchant_id uuid, p_credits integer)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_subscription_id uuid;
+  v_remaining integer;
+BEGIN
+  -- Get active subscription
+  SELECT id, (transaction_quota - used_quota) INTO v_subscription_id, v_remaining
+  FROM public.merchant_subscriptions
+  WHERE merchant_id = p_merchant_id
+    AND status = 'ACTIVE'
+    AND expired_at > now()
+  ORDER BY expired_at DESC
+  LIMIT 1;
+  
+  IF v_subscription_id IS NULL THEN
+    RETURN false;
+  END IF;
+  
+  IF v_remaining < p_credits THEN
+    RETURN false;
+  END IF;
+  
+  -- Deduct credits
+  UPDATE public.merchant_subscriptions
+  SET used_quota = used_quota + p_credits,
+      updated_at = now()
+  WHERE id = v_subscription_id;
+  
+  RETURN true;
+END;
+$$;
+
+-- Auto-update timestamps
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Auto-create profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (user_id, full_name)
+  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', 'User'));
+  
+  INSERT INTO public.user_roles (user_id, role)
+  VALUES (NEW.id, 'buyer');
+  
+  RETURN NEW;
+END;
+$$;
+
+-- =====================================================
 -- =====================================================
 -- PART 4: VIEWS
 -- =====================================================
