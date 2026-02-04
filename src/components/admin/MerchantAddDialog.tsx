@@ -28,6 +28,7 @@ import {
   fetchVillages,
   Region,
 } from '@/lib/addressApi';
+import { AdminLocationPicker } from './AdminLocationPicker';
 
 interface MerchantAddDialogProps {
   open: boolean;
@@ -96,6 +97,8 @@ export function MerchantAddDialog({
     order_mode: 'ADMIN_ASSISTED',
     is_verified: false,
     image_url: '',
+    location_lat: null as number | null,
+    location_lng: null as number | null,
   });
 
   // Load provinces on dialog open
@@ -287,7 +290,7 @@ export function MerchantAddDialog({
           is_open: formData.is_open,
           status: formData.status,
           registration_status: formData.registration_status,
-          village_id: formData.village_id || null, // Null if not linked to a tourism village
+          village_id: formData.village_id || null,
           province: formData.province_name,
           city: formData.regency_name,
           district: formData.district_name,
@@ -297,6 +300,8 @@ export function MerchantAddDialog({
           badge: formData.badge === 'none' ? null : formData.badge,
           is_verified: formData.is_verified,
           image_url: formData.image_url || null,
+          location_lat: formData.location_lat,
+          location_lng: formData.location_lng,
         });
 
       if (error) throw error;
@@ -330,6 +335,8 @@ export function MerchantAddDialog({
         order_mode: 'ADMIN_ASSISTED',
         is_verified: false,
         image_url: '',
+        location_lat: null,
+        location_lng: null,
       });
     } catch (error) {
       console.error('Error adding merchant:', error);
@@ -561,6 +568,14 @@ export function MerchantAddDialog({
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 placeholder="Nama jalan, nomor rumah, dll"
                 rows={2}
+              />
+            </div>
+
+            {/* Map Location Picker */}
+            <div className="mt-4">
+              <AdminLocationPicker
+                value={formData.location_lat && formData.location_lng ? { lat: formData.location_lat, lng: formData.location_lng } : null}
+                onChange={(loc) => setFormData({ ...formData, location_lat: loc.lat, location_lng: loc.lng })}
               />
             </div>
           </div>

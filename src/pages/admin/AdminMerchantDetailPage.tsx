@@ -24,6 +24,16 @@ import { toast } from 'sonner';
 import { approveMerchant, rejectMerchant, deleteMerchant } from '@/lib/adminApi';
 import { MerchantEditDialog } from '@/components/admin/MerchantEditDialog';
 import { AssignPackageDialog } from '@/components/admin/AssignPackageDialog';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import L from 'leaflet';
+
+// Fix for default marker icon
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
 
 interface MerchantDetail {
   id: string;
@@ -56,6 +66,8 @@ interface MerchantDetail {
   order_mode: string;
   is_verified: boolean | null;
   villages: { name: string } | null;
+  location_lat: number | null;
+  location_lng: number | null;
 }
 
 interface ProductSummary {
@@ -469,6 +481,44 @@ export default function AdminMerchantDetailPage() {
                   <p className="text-sm text-muted-foreground">Alamat</p>
                   <p className="text-sm col-span-2">{merchant.address || '-'}</p>
                 </div>
+                
+                {/* Map Display */}
+                {merchant.location_lat && merchant.location_lng && (
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground mb-2">Titik Lokasi</p>
+                    <div 
+                      className="relative rounded-lg border border-border overflow-hidden bg-muted"
+                      style={{ height: '180px', width: '100%' }}
+                    >
+                      <style>
+                        {`
+                          .detail-map-container .leaflet-container {
+                            height: 100% !important;
+                            width: 100% !important;
+                            z-index: 1;
+                          }
+                        `}
+                      </style>
+                      <div className="detail-map-container" style={{ height: '100%', width: '100%' }}>
+                        <MapContainer
+                          center={[merchant.location_lat, merchant.location_lng]}
+                          zoom={15}
+                          scrollWheelZoom={false}
+                          style={{ height: '100%', width: '100%' }}
+                          attributionControl={false}
+                        >
+                          <TileLayer
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          <Marker position={[merchant.location_lat, merchant.location_lng]} />
+                        </MapContainer>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 font-mono">
+                      {merchant.location_lat.toFixed(5)}, {merchant.location_lng.toFixed(5)}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -593,6 +643,8 @@ export default function AdminMerchantDetailPage() {
           order_mode: merchant.order_mode,
           is_verified: merchant.is_verified,
           image_url: merchant.image_url,
+          location_lat: merchant.location_lat,
+          location_lng: merchant.location_lng,
         }}
         onSuccess={fetchMerchantData}
       />

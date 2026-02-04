@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { AddressDropdowns } from './AddressDropdowns';
 
 interface CourierEditDialogProps {
   open: boolean;
@@ -33,15 +35,19 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
     name: '',
     phone: '',
     email: '',
-    province: '',
-    city: '',
-    district: '',
-    subdistrict: '',
+    province_code: '',
+    province_name: '',
+    regency_code: '',
+    regency_name: '',
+    district_code: '',
+    district_name: '',
+    village_code: '',
+    village_name: '',
     address: '',
     ktp_number: '',
-    vehicle_type: '',
+    vehicle_type: 'motor',
     vehicle_plate: '',
-    status: '',
+    status: 'ACTIVE',
     village_id: '',
   });
 
@@ -62,10 +68,14 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
         name: courier.name || '',
         phone: courier.phone || '',
         email: courier.email || '',
-        province: courier.province || '',
-        city: courier.city || '',
-        district: courier.district || '',
-        subdistrict: courier.subdistrict || '',
+        province_code: '',
+        province_name: courier.province || '',
+        regency_code: '',
+        regency_name: courier.city || '',
+        district_code: '',
+        district_name: courier.district || '',
+        village_code: '',
+        village_name: courier.subdistrict || '',
         address: courier.address || '',
         ktp_number: courier.ktp_number || '',
         vehicle_type: courier.vehicle_type || 'motor',
@@ -75,6 +85,29 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
       });
     }
   }, [courier]);
+
+  const handleAddressChange = (data: {
+    provinceCode: string;
+    provinceName: string;
+    regencyCode: string;
+    regencyName: string;
+    districtCode: string;
+    districtName: string;
+    villageCode: string;
+    villageName: string;
+  }) => {
+    setFormData(prev => ({
+      ...prev,
+      province_code: data.provinceCode,
+      province_name: data.provinceName,
+      regency_code: data.regencyCode,
+      regency_name: data.regencyName,
+      district_code: data.districtCode,
+      district_name: data.districtName,
+      village_code: data.villageCode,
+      village_name: data.villageName,
+    }));
+  };
 
   const handleSubmit = async () => {
     if (!formData.name || !formData.phone) {
@@ -90,10 +123,10 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
           name: formData.name,
           phone: formData.phone,
           email: formData.email || null,
-          province: formData.province,
-          city: formData.city,
-          district: formData.district,
-          subdistrict: formData.subdistrict,
+          province: formData.province_name,
+          city: formData.regency_name,
+          district: formData.district_name,
+          subdistrict: formData.village_name,
           address: formData.address,
           ktp_number: formData.ktp_number,
           vehicle_type: formData.vehicle_type,
@@ -125,8 +158,9 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+            <div className="col-span-2 space-y-2">
               <Label>Nama Lengkap *</Label>
               <Input
                 value={formData.name}
@@ -134,7 +168,7 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
                 placeholder="Nama sesuai KTP"
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>No. Telepon *</Label>
               <Input
                 value={formData.phone}
@@ -142,7 +176,7 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
                 placeholder="08xxxx"
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Email</Label>
               <Input
                 type="email"
@@ -153,7 +187,7 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
             </div>
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>No. KTP</Label>
             <Input
               value={formData.ktp_number}
@@ -163,48 +197,35 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Provinsi</Label>
-              <Input
-                value={formData.province}
-                onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Kota/Kabupaten</Label>
-              <Input
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Kecamatan</Label>
-              <Input
-                value={formData.district}
-                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Kelurahan/Desa</Label>
-              <Input
-                value={formData.subdistrict}
-                onChange={(e) => setFormData({ ...formData, subdistrict: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label>Alamat Lengkap</Label>
-            <Input
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="Nama jalan, nomor rumah, dll"
+          {/* Address Dropdowns */}
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-medium mb-3">Alamat</h4>
+            <AddressDropdowns
+              provinceCode={formData.province_code}
+              regencyCode={formData.regency_code}
+              districtCode={formData.district_code}
+              villageCode={formData.village_code}
+              provinceName={formData.province_name}
+              regencyName={formData.regency_name}
+              districtName={formData.district_name}
+              villageName={formData.village_name}
+              onChange={handleAddressChange}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="space-y-2">
+            <Label>Alamat Lengkap</Label>
+            <Textarea
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              placeholder="Nama jalan, nomor rumah, dll"
+              rows={2}
+            />
+          </div>
+
+          {/* Vehicle & Status */}
+          <div className="grid grid-cols-2 gap-4 border-t pt-4">
+            <div className="space-y-2">
               <Label>Jenis Kendaraan</Label>
               <Select
                 value={formData.vehicle_type}
@@ -220,7 +241,7 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Plat Nomor</Label>
               <Input
                 value={formData.vehicle_plate}
@@ -231,7 +252,7 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
+            <div className="space-y-2">
               <Label>Wilayah Desa (Opsional)</Label>
               <Select
                 value={formData.village_id || "none"}
@@ -248,7 +269,7 @@ export function CourierEditDialog({ open, onOpenChange, courier, onSuccess }: Co
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Status Akun</Label>
               <Select
                 value={formData.status}

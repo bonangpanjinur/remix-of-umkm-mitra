@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { AddressDropdowns } from './AddressDropdowns';
 
 interface AddCourierDialogProps {
   onSuccess: () => void;
@@ -33,10 +35,14 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
     name: '',
     phone: '',
     email: '',
-    province: 'Jawa Barat',
-    city: '',
-    district: '',
-    subdistrict: '',
+    province_code: '',
+    province_name: '',
+    regency_code: '',
+    regency_name: '',
+    district_code: '',
+    district_name: '',
+    village_code: '',
+    village_name: '',
     address: '',
     ktp_number: '',
     vehicle_type: 'motor',
@@ -55,6 +61,29 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
     }
   }, [open]);
 
+  const handleAddressChange = (data: {
+    provinceCode: string;
+    provinceName: string;
+    regencyCode: string;
+    regencyName: string;
+    districtCode: string;
+    districtName: string;
+    villageCode: string;
+    villageName: string;
+  }) => {
+    setFormData(prev => ({
+      ...prev,
+      province_code: data.provinceCode,
+      province_name: data.provinceName,
+      regency_code: data.regencyCode,
+      regency_name: data.regencyName,
+      district_code: data.districtCode,
+      district_name: data.districtName,
+      village_code: data.villageCode,
+      village_name: data.villageName,
+    }));
+  };
+
   const handleSubmit = async () => {
     if (!formData.name || !formData.phone || !formData.ktp_number) {
       toast.error('Nama, telepon, dan No. KTP wajib diisi');
@@ -67,10 +96,10 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
         name: formData.name,
         phone: formData.phone,
         email: formData.email || null,
-        province: formData.province,
-        city: formData.city,
-        district: formData.district,
-        subdistrict: formData.subdistrict,
+        province: formData.province_name,
+        city: formData.regency_name,
+        district: formData.district_name,
+        subdistrict: formData.village_name,
         address: formData.address,
         ktp_number: formData.ktp_number,
         ktp_image_url: 'https://placeholder.co/400x300?text=KTP', 
@@ -103,10 +132,14 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
       name: '',
       phone: '',
       email: '',
-      province: 'Jawa Barat',
-      city: '',
-      district: '',
-      subdistrict: '',
+      province_code: '',
+      province_name: '',
+      regency_code: '',
+      regency_name: '',
+      district_code: '',
+      district_name: '',
+      village_code: '',
+      village_name: '',
       address: '',
       ktp_number: '',
       vehicle_type: 'motor',
@@ -131,7 +164,7 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
         <div className="space-y-4 py-2">
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+            <div className="col-span-2 space-y-2">
               <Label>Nama Lengkap *</Label>
               <Input
                 value={formData.name}
@@ -139,7 +172,7 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
                 placeholder="Nama kurir sesuai KTP"
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>No. Telepon *</Label>
               <Input
                 value={formData.phone}
@@ -147,7 +180,7 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
                 placeholder="08xxxxxxxxxx"
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Email</Label>
               <Input
                 type="email"
@@ -159,7 +192,7 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
           </div>
 
           {/* Identity */}
-          <div>
+          <div className="space-y-2">
             <Label>No. KTP *</Label>
             <Input
               value={formData.ktp_number}
@@ -169,53 +202,35 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
             />
           </div>
 
-          {/* Location */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Provinsi</Label>
-              <Input
-                value={formData.province}
-                onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Kota/Kabupaten</Label>
-              <Input
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                placeholder="Kota/Kabupaten"
-              />
-            </div>
-            <div>
-              <Label>Kecamatan</Label>
-              <Input
-                value={formData.district}
-                onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                placeholder="Kecamatan"
-              />
-            </div>
-            <div>
-              <Label>Kelurahan/Desa</Label>
-              <Input
-                value={formData.subdistrict}
-                onChange={(e) => setFormData({ ...formData, subdistrict: e.target.value })}
-                placeholder="Kelurahan/Desa"
-              />
-            </div>
+          {/* Address Dropdowns */}
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-medium mb-3">Alamat</h4>
+            <AddressDropdowns
+              provinceCode={formData.province_code}
+              regencyCode={formData.regency_code}
+              districtCode={formData.district_code}
+              villageCode={formData.village_code}
+              provinceName={formData.province_name}
+              regencyName={formData.regency_name}
+              districtName={formData.district_name}
+              villageName={formData.village_name}
+              onChange={handleAddressChange}
+            />
           </div>
 
-          <div>
+          <div className="space-y-2">
             <Label>Alamat Lengkap</Label>
-            <Input
+            <Textarea
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               placeholder="Jl. Contoh No. 123"
+              rows={2}
             />
           </div>
 
           {/* Vehicle & Village */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-2 gap-4 border-t pt-4">
+            <div className="space-y-2">
               <Label>Jenis Kendaraan</Label>
               <Select
                 value={formData.vehicle_type}
@@ -231,7 +246,7 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Plat Nomor</Label>
               <Input
                 value={formData.vehicle_plate}
@@ -241,7 +256,7 @@ export function AddCourierDialog({ onSuccess }: AddCourierDialogProps) {
             </div>
           </div>
           
-          <div>
+          <div className="space-y-2">
             <Label>Wilayah Desa (Opsional)</Label>
             <Select
               value={formData.village_id || "none"}
