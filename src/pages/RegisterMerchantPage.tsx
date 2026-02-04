@@ -22,6 +22,7 @@ import {
   type Region
 } from '../lib/addressApi';
 import type { Village } from '../types';
+import { MerchantLocationPicker } from '../components/merchant/MerchantLocationPicker';
 
 const merchantSchema = z.object({
   referralCode: z.string().max(50).optional(),
@@ -76,6 +77,7 @@ export default function RegisterMerchantPage() {
   
   const [matchedVillage, setMatchedVillage] = useState<Village | null>(null);
   const [villageLoading, setVillageLoading] = useState(false);
+  const [merchantLocation, setMerchantLocation] = useState<{ lat: number; lng: number } | null>(null);
   
   const [referralInfo, setReferralInfo] = useState<ReferralInfo>({
     isValid: false,
@@ -271,6 +273,8 @@ export default function RegisterMerchantPage() {
         is_open: false,
         open_time: data.openTime,
         close_time: data.closeTime,
+        location_lat: merchantLocation?.lat || null,
+        location_lng: merchantLocation?.lng || null,
       });
 
       if (error) throw error;
@@ -570,6 +574,12 @@ export default function RegisterMerchantPage() {
                 />
                 {errors.addressDetail && <p className="text-xs text-destructive">{errors.addressDetail.message}</p>}
               </div>
+              
+              {/* Location Picker */}
+              <MerchantLocationPicker
+                value={merchantLocation}
+                onChange={setMerchantLocation}
+              />
             </div>
           </section>
 
