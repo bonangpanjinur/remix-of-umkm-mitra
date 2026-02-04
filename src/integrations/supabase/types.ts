@@ -1575,6 +1575,42 @@ export type Database = {
         }
         Relationships: []
       }
+      quota_tiers: {
+        Row: {
+          created_at: string
+          credit_cost: number
+          description: string | null
+          id: string
+          is_active: boolean
+          max_price: number | null
+          min_price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credit_cost?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_price?: number | null
+          min_price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credit_cost?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          max_price?: number | null
+          min_price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       rate_limits: {
         Row: {
           action: string
@@ -1956,6 +1992,7 @@ export type Database = {
           is_active: boolean
           name: string
           price_per_transaction: number
+          total_credits: number
           transaction_quota: number
           updated_at: string
           validity_days: number
@@ -1969,6 +2006,7 @@ export type Database = {
           is_active?: boolean
           name: string
           price_per_transaction?: number
+          total_credits?: number
           transaction_quota?: number
           updated_at?: string
           validity_days?: number
@@ -1982,6 +2020,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           price_per_transaction?: number
+          total_credits?: number
           transaction_quota?: number
           updated_at?: string
           validity_days?: number
@@ -2626,6 +2665,8 @@ export type Database = {
         Args: { p_group_id: string; p_month: number; p_year: number }
         Returns: number
       }
+      get_user_courier_id: { Args: { _user_id: string }; Returns: string }
+      get_user_merchant_id: { Args: { _user_id: string }; Returns: string }
       get_user_roles: { Args: { _user_id: string }; Returns: string[] }
       has_any_role: {
         Args: {
@@ -2644,7 +2685,15 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_admin_desa: { Args: never; Returns: boolean }
       is_courier: { Args: never; Returns: boolean }
+      is_courier_owner: {
+        Args: { _courier_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_merchant: { Args: never; Returns: boolean }
+      is_order_merchant: {
+        Args: { _merchant_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_verifikator: { Args: never; Returns: boolean }
       process_verifikator_withdrawal: {
         Args: {

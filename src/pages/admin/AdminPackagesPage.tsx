@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Plus, Edit, Trash2, Settings, Info } from 'lucide-react';
+import { Package, Plus, Edit, Trash2, Info } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Link } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -34,10 +33,9 @@ import { formatPrice } from '@/lib/utils';
 interface TransactionPackage {
   id: string;
   name: string;
-  classification_price: string;
-  price_per_transaction: number;
+  price_per_transaction: number; // This is the package price now
   group_commission_percent: number;
-  transaction_quota: number;
+  transaction_quota: number; // This is total credits
   validity_days: number;
   description: string | null;
   is_active: boolean;
@@ -50,10 +48,10 @@ export default function AdminPackagesPage() {
   const [editingPackage, setEditingPackage] = useState<TransactionPackage | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    classification_price: 'UNDER_5K',
-    price_per_transaction: 500,
+    classification_price: 'medium', // Required field
+    price_per_transaction: 50000, // Package price
     group_commission_percent: 10,
-    transaction_quota: 50,
+    transaction_quota: 100, // Total credits
     validity_days: 30,
     description: '',
     is_active: true,
@@ -64,7 +62,7 @@ export default function AdminPackagesPage() {
       const { data, error } = await supabase
         .from('transaction_packages')
         .select('*')
-        .order('price_per_transaction', { ascending: true });
+        .order('transaction_quota', { ascending: true });
 
       if (error) throw error;
       setPackages((data || []) as TransactionPackage[]);
@@ -130,7 +128,7 @@ export default function AdminPackagesPage() {
     setEditingPackage(pkg);
     setFormData({
       name: pkg.name,
-      classification_price: pkg.classification_price,
+      classification_price: (pkg as any).classification_price || 'medium',
       price_per_transaction: pkg.price_per_transaction,
       group_commission_percent: pkg.group_commission_percent,
       transaction_quota: pkg.transaction_quota,
@@ -145,19 +143,14 @@ export default function AdminPackagesPage() {
     setEditingPackage(null);
     setFormData({
       name: '',
-      classification_price: 'UNDER_5K',
-      price_per_transaction: 500,
+      classification_price: 'medium',
+      price_per_transaction: 50000,
       group_commission_percent: 10,
-      transaction_quota: 50,
+      transaction_quota: 100,
       validity_days: 30,
       description: '',
       is_active: true,
     });
-  };
-
-  // Calculate total price based on transaction quota and price per transaction
-  const calculateTotalPrice = (pkg: TransactionPackage) => {
-    return pkg.transaction_quota * pkg.price_per_transaction;
   };
 
   return (
@@ -169,20 +162,19 @@ export default function AdminPackagesPage() {
             {packages.length} paket tersedia
           </span>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Tambah Paket
-          </Button>
-        </div>
+        <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+          <Plus className="h-4 w-4 mr-2" />
+          Tambah Paket
+        </Button>
       </div>
 
       <Alert className="mb-6 border-primary/20 bg-primary/5">
         <Info className="h-4 w-4 text-primary" />
-        <AlertTitle className="text-foreground">Informasi Paket</AlertTitle>
+        <AlertTitle className="text-foreground">Alur Manajemen Paket</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          Paket ini menentukan berapa banyak <strong>total kuota (kredit)</strong> yang didapat merchant. 
-          Harga paket dihitung dari kuota × harga per transaksi.
+          <strong>Paket transaksi</strong> hanya menyediakan paket beserta harganya. 
+          Pedagang membeli paket dan mendapat <strong>total kredit</strong>. 
+          Kredit yang digunakan per transaksi ditentukan oleh <strong>Pengaturan Kuota</strong> berdasarkan harga produk.
         </AlertDescription>
       </Alert>
 
@@ -200,36 +192,32 @@ export default function AdminPackagesPage() {
                     <CardTitle className="text-lg">{pkg.name}</CardTitle>
                     <CardDescription>Paket Kuota Transaksi</CardDescription>
                   </div>
-                  <div className="flex gap-1">
-                    {pkg.is_active ? (
-                      <Badge variant="success">Aktif</Badge>
-                    ) : (
-                      <Badge variant="secondary">Nonaktif</Badge>
-                    )}
-                  </div>
+                  <Badge variant={pkg.is_active ? "success" : "secondary"}>
+                    {pkg.is_active ? 'Aktif' : 'Nonaktif'}
+                  </Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-                  <div>
-                    <p className="text-muted-foreground">Harga Paket</p>
-                    <p className="font-bold text-primary">{formatPrice(calculateTotalPrice(pkg))}</p>
+                <div className="space-y-3 text-sm mb-4">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Harga Paket</span>
+                    <span className="font-bold text-primary">{formatPrice(pkg.price_per_transaction)}</span>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Komisi Kelompok</p>
-                    <p className="font-bold">{pkg.group_commission_percent}%</p>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Kredit</span>
+                    <span className="font-bold">{pkg.transaction_quota} Kredit</span>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Total Kuota</p>
-                    <p className="font-bold">{pkg.transaction_quota} Kredit</p>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Komisi Kelompok</span>
+                    <span className="font-bold">{pkg.group_commission_percent}%</span>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Masa Aktif</p>
-                    <p className="font-medium">{pkg.validity_days === 0 ? 'Selamanya' : `${pkg.validity_days} hari`}</p>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Masa Aktif</span>
+                    <span className="font-medium">{pkg.validity_days === 0 ? 'Selamanya' : `${pkg.validity_days} hari`}</span>
                   </div>
                 </div>
                 {pkg.description && (
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2 h-10">{pkg.description}</p>
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{pkg.description}</p>
                 )}
                 <div className="flex gap-2 pt-2 border-t">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(pkg)}>
@@ -257,57 +245,64 @@ export default function AdminPackagesPage() {
 
           <div className="space-y-4 py-2">
             <div>
-              <Label htmlFor="name">Nama Paket</Label>
+              <Label htmlFor="name">Nama Paket *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Contoh: Paket Hemat"
+                placeholder="Contoh: Paket Pemula"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="price_per_transaction">Harga per Transaksi (Rp)</Label>
-                <Input
-                  id="price_per_transaction"
-                  type="number"
-                  value={formData.price_per_transaction}
-                  onChange={(e) => setFormData({ ...formData, price_per_transaction: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="group_commission_percent">Komisi Kelompok (%)</Label>
-                <Input
-                  id="group_commission_percent"
-                  type="number"
-                  step="0.01"
-                  value={formData.group_commission_percent}
-                  onChange={(e) => setFormData({ ...formData, group_commission_percent: Number(e.target.value) })}
-                />
-              </div>
+            <div>
+              <Label htmlFor="price_per_transaction">Harga Paket (Rp) *</Label>
+              <Input
+                id="price_per_transaction"
+                type="number"
+                value={formData.price_per_transaction}
+                onChange={(e) => setFormData({ ...formData, price_per_transaction: Number(e.target.value) })}
+                placeholder="50000"
+              />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="transaction_quota">Total Kuota (Kredit)</Label>
-                <Input
-                  id="transaction_quota"
-                  type="number"
-                  value={formData.transaction_quota}
-                  onChange={(e) => setFormData({ ...formData, transaction_quota: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="validity_days">Masa Aktif (hari)</Label>
-                <Input
-                  id="validity_days"
-                  type="number"
-                  value={formData.validity_days}
-                  onChange={(e) => setFormData({ ...formData, validity_days: Number(e.target.value) })}
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">Isi 0 untuk tanpa masa aktif</p>
-              </div>
+            <div>
+              <Label htmlFor="transaction_quota">Total Kredit *</Label>
+              <Input
+                id="transaction_quota"
+                type="number"
+                value={formData.transaction_quota}
+                onChange={(e) => setFormData({ ...formData, transaction_quota: Number(e.target.value) })}
+                placeholder="100"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Jumlah kredit yang didapat pedagang saat membeli paket ini
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="group_commission_percent">Komisi Kelompok (%)</Label>
+              <Input
+                id="group_commission_percent"
+                type="number"
+                step="0.01"
+                value={formData.group_commission_percent}
+                onChange={(e) => setFormData({ ...formData, group_commission_percent: Number(e.target.value) })}
+                placeholder="10"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Persentase komisi yang diberikan ke kelompok/verifikator
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="validity_days">Masa Aktif (hari)</Label>
+              <Input
+                id="validity_days"
+                type="number"
+                value={formData.validity_days}
+                onChange={(e) => setFormData({ ...formData, validity_days: Number(e.target.value) })}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Isi 0 untuk tanpa batas waktu</p>
             </div>
 
             <div>
@@ -335,7 +330,7 @@ export default function AdminPackagesPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Batal
             </Button>
-            <Button onClick={handleSubmit} disabled={!formData.name}>
+            <Button onClick={handleSubmit} disabled={!formData.name || formData.transaction_quota <= 0}>
               {editingPackage ? 'Simpan Perubahan' : 'Tambah Paket'}
             </Button>
           </DialogFooter>
