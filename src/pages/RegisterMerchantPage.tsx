@@ -6,11 +6,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
   Store, Phone, MapPin, ArrowLeft, CheckCircle, Clock, 
-  Tag, FileText, Building, Shield, AlertCircle, Check
+  Tag, FileText, Building, Shield, AlertCircle, Check, Mail
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BottomNav } from '../components/layout/BottomNav';
 import { Button } from '../components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
 import { useAuth } from '../contexts/AuthContext';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -66,6 +75,7 @@ export default function RegisterMerchantPage() {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
@@ -282,6 +292,7 @@ export default function RegisterMerchantPage() {
 
       if (error) throw error;
       setIsSuccess(true);
+      setShowEmailModal(true);
       toast.success('Pendaftaran pedagang berhasil dikirim!');
     } catch (error) {
       console.error('Error submitting merchant registration:', error);
@@ -307,6 +318,26 @@ export default function RegisterMerchantPage() {
             Kembali ke Beranda
           </Button>
         </div>
+
+        <AlertDialog open={showEmailModal} onOpenChange={setShowEmailModal}>
+          <AlertDialogContent className="w-[90%] rounded-2xl">
+            <AlertDialogHeader>
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+                <Mail className="h-6 w-6 text-primary" />
+              </div>
+              <AlertDialogTitle className="text-center">Verifikasi Email Anda</AlertDialogTitle>
+              <AlertDialogDescription className="text-center">
+                Pendaftaran berhasil! Mohon segera cek email Anda untuk memverifikasi pendaftaran merchant. Pastikan juga untuk memeriksa folder spam jika email tidak ditemukan di kotak masuk.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setShowEmailModal(false)} className="w-full rounded-xl">
+                Saya Mengerti
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <BottomNav />
       </div>
     );
