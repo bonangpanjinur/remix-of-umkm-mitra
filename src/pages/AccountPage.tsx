@@ -250,29 +250,31 @@ export default function AccountPage() {
             </div>
           )}
           
-          {/* Merchant/Village Registration CTA */}
-          <div 
-            onClick={() => navigate('/register')}
-            className="bg-gradient-to-r from-primary to-brand-dark rounded-2xl p-5 mb-6 text-primary-foreground relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
-          >
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-2">
-                <Store className="h-5 w-5" />
-                <h3 className="font-bold">Bergabung Bersama Kami</h3>
+          {/* Merchant/Village Registration CTA - Only show for logged in users who are NOT yet merchants or admins */}
+          {user && !isMerchant && !isAdminDesa && !isAdmin && (
+            <div 
+              onClick={() => navigate('/register')}
+              className="bg-gradient-to-r from-primary to-brand-dark rounded-2xl p-5 mb-6 text-primary-foreground relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+            >
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Store className="h-5 w-5" />
+                  <h3 className="font-bold">Bergabung Bersama Kami</h3>
+                </div>
+                <p className="text-sm opacity-90 mb-3">
+                  Daftarkan desa wisata atau usaha UMKM Anda
+                </p>
+                <Button 
+                  variant="secondary"
+                  size="sm"
+                >
+                  Daftar Sekarang
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
               </div>
-              <p className="text-sm opacity-90 mb-3">
-                Daftarkan desa wisata atau usaha UMKM Anda
-              </p>
-              <Button 
-                variant="secondary"
-                size="sm"
-              >
-                Daftar Sekarang
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+              <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-primary-foreground/10 rounded-full" />
             </div>
-            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-primary-foreground/10 rounded-full" />
-          </div>
+          )}
           
           {/* Menu Items */}
           <div className="space-y-2">

@@ -8,6 +8,7 @@ import { MapPin, User, Phone, Mail, ArrowLeft, CheckCircle, Building, MapPinned,
 import { PageHeader } from '@/components/layout/PageHeader';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -35,6 +36,7 @@ type VillageFormData = z.infer<typeof villageSchema>;
 
 export default function RegisterVillagePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -127,6 +129,7 @@ export default function RegisterVillagePage() {
 
       const { error } = await supabase.from('villages').insert({
         name: data.name.trim(),
+        user_id: user?.id || null,
         province: provinceName,
         regency: regencyName,
         district: districtName,

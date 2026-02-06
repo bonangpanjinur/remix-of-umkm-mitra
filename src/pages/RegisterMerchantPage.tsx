@@ -11,6 +11,7 @@ import {
 import { PageHeader } from '../components/layout/PageHeader';
 import { BottomNav } from '../components/layout/BottomNav';
 import { Button } from '../components/ui/button';
+import { useAuth } from '../contexts/AuthContext';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
@@ -62,6 +63,7 @@ interface ReferralInfo {
 
 export default function RegisterMerchantPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   
@@ -256,6 +258,7 @@ export default function RegisterMerchantPage() {
 
       const { error } = await supabase.from('merchants').insert({
         name: data.name.trim(),
+        user_id: user?.id || null,
         village_id: matchedVillage?.id || null,
         address: data.addressDetail.trim(),
         province: provinceName,
