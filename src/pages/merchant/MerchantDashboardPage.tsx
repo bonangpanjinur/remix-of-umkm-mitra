@@ -174,136 +174,175 @@ export default function MerchantDashboardPage() {
       {/* 1. Quota Alert Banner - High priority, at the top */}
       <QuotaAlertBanner />
 
-      {/* 2. Store Status Card */}
-      <div className="bg-card rounded-xl border border-border p-5 mb-6">
+      {/* 2. Store Status Card - Optimized for space */}
+      <div className="bg-card rounded-xl border border-border p-4 mb-4">
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h3 className="font-semibold text-lg">{merchant.name}</h3>
-            <p className="text-sm text-muted-foreground">
-              {merchant.is_open ? 'Toko sedang buka' : 'Toko sedang tutup'}
-            </p>
+          <div className="flex items-center gap-3">
+            {merchant.image_url ? (
+              <img src={merchant.image_url} alt={merchant.name} className="w-10 h-10 rounded-full object-cover border border-border" />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Package className="h-5 w-5 text-primary" />
+              </div>
+            )}
+            <div>
+              <h3 className="font-semibold text-base leading-tight">{merchant.name}</h3>
+              <p className="text-xs text-muted-foreground">
+                {merchant.is_open ? 'Toko sedang buka' : 'Toko sedang tutup'}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             <StoreQRCode 
               merchantId={merchant.id} 
               merchantName={merchant.name}
               merchantImage={merchant.image_url}
             />
-            <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${merchant.is_open ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`} />
-              <Label className="font-medium">
+            <div className="flex items-center gap-2 bg-muted/30 px-3 py-1.5 rounded-full border border-border">
+              <div className={`w-2 h-2 rounded-full ${merchant.is_open ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`} />
+              <Label className="text-xs font-medium cursor-pointer" htmlFor="store-status">
                 {merchant.is_open ? 'Buka' : 'Tutup'}
               </Label>
               <Switch
+                id="store-status"
                 checked={merchant.is_open}
                 onCheckedChange={toggleStoreStatus}
                 disabled={updatingStatus}
+                className="scale-75 origin-right"
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. Quota and Group Status - Inside grid */}
-      <div className="grid md:grid-cols-2 gap-6 mb-6">
+      {/* 3. Quota and Group Status - Compact grid */}
+      <div className="grid md:grid-cols-2 gap-4 mb-4">
         <QuotaStatusCard />
         <MerchantGroupCard />
       </div>
 
-      {/* Quick Stats */}
-      <div className="mb-6">
+      {/* Quick Stats - Compact */}
+      <div className="mb-4">
         <QuickStats merchantId={merchant.id} />
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-2 lg:grid-cols-4 w-full">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
+      {/* Tabs - Main Content Area */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid grid-cols-2 lg:grid-cols-4 w-full sticky top-[73px] z-20 bg-background/95 backdrop-blur shadow-sm border border-border rounded-lg p-1">
+          <TabsTrigger value="overview" className="flex items-center gap-2 text-xs lg:text-sm py-2">
+            <TrendingUp className="h-3.5 w-3.5" />
             Overview
           </TabsTrigger>
-          <TabsTrigger value="orders" className="flex items-center gap-2">
-            <Receipt className="h-4 w-4" />
+          <TabsTrigger value="orders" className="flex items-center gap-2 text-xs lg:text-sm py-2">
+            <Receipt className="h-3.5 w-3.5" />
             Pesanan
           </TabsTrigger>
-          <TabsTrigger value="stock" className="flex items-center gap-2">
-            <Package className="h-4 w-4" />
+          <TabsTrigger value="stock" className="flex items-center gap-2 text-xs lg:text-sm py-2">
+            <Package className="h-3.5 w-3.5" />
             Stok
           </TabsTrigger>
-          <TabsTrigger value="more" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
+          <TabsTrigger value="more" className="flex items-center gap-2 text-xs lg:text-sm py-2">
+            <BarChart3 className="h-3.5 w-3.5" />
             Lainnya
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          {/* Charts */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <SalesAreaChart data={salesChartData} title="Pendapatan 14 Hari Terakhir" />
-            <OrdersBarChart data={salesChartData} title="Jumlah Pesanan 14 Hari Terakhir" />
+        <TabsContent value="overview" className="space-y-4 mt-0">
+          {/* Charts - Reduced height or better layout */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-card rounded-xl border border-border p-1 overflow-hidden">
+              <SalesAreaChart data={salesChartData} title="Pendapatan (14 Hari)" />
+            </div>
+            <div className="bg-card rounded-xl border border-border p-1 overflow-hidden">
+              <OrdersBarChart data={salesChartData} title="Pesanan (14 Hari)" />
+            </div>
           </div>
 
-          {/* Stock Alerts */}
-          <StockAlerts merchantId={merchant.id} />
+          {/* Stock Alerts - Limited height if possible */}
+          <div className="bg-card rounded-xl border border-border p-4">
+            <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-warning" />
+              Peringatan Stok
+            </h4>
+            <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              <StockAlerts merchantId={merchant.id} />
+            </div>
+          </div>
         </TabsContent>
 
-        <TabsContent value="orders">
-          <OrderStatusManager merchantId={merchant.id} />
+        <TabsContent value="orders" className="mt-0">
+          <div className="bg-card rounded-xl border border-border p-1 min-h-[400px]">
+            <OrderStatusManager merchantId={merchant.id} />
+          </div>
         </TabsContent>
 
-        <TabsContent value="stock">
-          <StockAlerts merchantId={merchant.id} />
+        <TabsContent value="stock" className="mt-0">
+          <div className="bg-card rounded-xl border border-border p-4 min-h-[400px]">
+            <StockAlerts merchantId={merchant.id} />
+          </div>
         </TabsContent>
 
-        <TabsContent value="more" className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <TabsContent value="more" className="mt-0">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <Button 
               variant="outline" 
-              className="h-auto py-6 flex flex-col items-center gap-2"
+              className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all"
               onClick={() => navigate('/merchant/products')}
             >
-              <Package className="h-8 w-8" />
-              <span>Kelola Produk</span>
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Package className="h-5 w-5 text-primary" />
+              </div>
+              <span className="text-xs font-medium">Produk</span>
             </Button>
             <Button 
               variant="outline" 
-              className="h-auto py-6 flex flex-col items-center gap-2"
+              className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all"
               onClick={() => navigate('/merchant/analytics')}
             >
-              <BarChart3 className="h-8 w-8" />
-              <span>Analitik</span>
+              <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <BarChart3 className="h-5 w-5 text-blue-500" />
+              </div>
+              <span className="text-xs font-medium">Analitik</span>
             </Button>
             <Button 
               variant="outline" 
-              className="h-auto py-6 flex flex-col items-center gap-2"
+              className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all"
               onClick={() => navigate('/merchant/reviews')}
             >
-              <Star className="h-8 w-8" />
-              <span>Ulasan</span>
+              <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                <Star className="h-5 w-5 text-yellow-500" />
+              </div>
+              <span className="text-xs font-medium">Ulasan</span>
             </Button>
             <Button 
               variant="outline" 
-              className="h-auto py-6 flex flex-col items-center gap-2"
+              className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all"
               onClick={() => navigate('/merchant/promo')}
             >
-              <Percent className="h-8 w-8" />
-              <span>Promo</span>
+              <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                <Percent className="h-5 w-5 text-purple-500" />
+              </div>
+              <span className="text-xs font-medium">Promo</span>
             </Button>
             <Button 
               variant="outline" 
-              className="h-auto py-6 flex flex-col items-center gap-2"
+              className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all"
               onClick={() => navigate('/merchant/withdrawal')}
             >
-              <Wallet className="h-8 w-8" />
-              <span>Penarikan</span>
+              <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-green-500" />
+              </div>
+              <span className="text-xs font-medium">Penarikan</span>
             </Button>
             <Button 
               variant="outline" 
-              className="h-auto py-6 flex flex-col items-center gap-2"
+              className="h-auto py-4 flex flex-col items-center gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all"
               onClick={() => navigate('/merchant/settings')}
             >
-              <Settings className="h-8 w-8" />
-              <span>Pengaturan</span>
+              <div className="w-10 h-10 rounded-full bg-gray-500/10 flex items-center justify-center">
+                <Settings className="h-5 w-5 text-gray-500" />
+              </div>
+              <span className="text-xs font-medium">Pengaturan</span>
             </Button>
           </div>
         </TabsContent>
