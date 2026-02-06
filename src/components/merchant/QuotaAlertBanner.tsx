@@ -35,21 +35,20 @@ export function QuotaAlertBanner() {
           return;
         }
 
-        const { data: subscription } = await supabase
+        const { data: subscriptions } = await supabase
           .from('merchant_subscriptions')
           .select('transaction_quota, used_quota, expired_at')
           .eq('merchant_id', merchant.id)
           .eq('status', 'ACTIVE')
-          .gte('expired_at', new Date().toISOString())
-          .order('expired_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .gte('expired_at', new Date().toISOString());
 
-        if (subscription) {
+        if (subscriptions && subscriptions.length > 0) {
+          const totalQuota = subscriptions.reduce((sum, sub) => sum + sub.transaction_quota, 0);
+          const usedQuota = subscriptions.reduce((sum, sub) => sum + sub.used_quota, 0);
           setStatus({
             hasActiveSubscription: true,
-            remainingQuota: subscription.transaction_quota - subscription.used_quota,
-            totalQuota: subscription.transaction_quota,
+            remainingQuota: totalQuota - usedQuota,
+            totalQuota: totalQuota,
           });
         } else {
           setStatus({

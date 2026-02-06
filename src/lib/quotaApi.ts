@@ -61,7 +61,7 @@ export async function calculateOrderCreditCost(items: { price: number; quantity:
   // This implies we calculate cost based on the product price.
   // If it's per unique product in the order:
   return items.reduce((total, item) => {
-    return total + calculateCreditCost(item.price, tiers);
+    return total + (calculateCreditCost(item.price, tiers) * item.quantity);
   }, 0);
 }
 

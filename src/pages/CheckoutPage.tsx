@@ -449,7 +449,7 @@ export default function CheckoutPage() {
         // or per order. Based on common practice in this app, we'll calculate per unique product in the order.
         const tiers = await fetchQuotaTiers();
         const creditsToUse = merchantData.items.reduce((total, item) => {
-          return total + calculateCreditCost(item.product.price, tiers);
+          return total + (calculateCreditCost(item.product.price, tiers) * item.quantity);
         }, 0);
 
         // Send notification to merchant about new order

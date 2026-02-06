@@ -37,8 +37,8 @@ export function useMerchantQuota(merchantIds: string[]) {
 
         if (!merchant) continue;
 
-        // Get active subscription
-        const { data: subscription } = await supabase
+        // Get active subscriptions
+        const { data: subscriptions } = await supabase
           .from('merchant_subscriptions')
           .select(`
             transaction_quota,
@@ -50,25 +50,29 @@ export function useMerchantQuota(merchantIds: string[]) {
           .eq('merchant_id', merchantId)
           .eq('status', 'ACTIVE')
           .gte('expired_at', new Date().toISOString())
-          .order('expired_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .order('expired_at', { ascending: true });
 
         let status: MerchantQuotaStatus;
 
-        if (subscription) {
-          const pkg = subscription.package as { name: string } | null;
-          const remaining = subscription.transaction_quota - subscription.used_quota;
+        if (subscriptions && subscriptions.length > 0) {
+          // Aggregate quota from all active subscriptions
+          const totalQuota = subscriptions.reduce((sum, sub) => sum + sub.transaction_quota, 0);
+          const usedQuota = subscriptions.reduce((sum, sub) => sum + sub.used_quota, 0);
+          const remaining = totalQuota - usedQuota;
+          
+          // Use the package name of the first one and soonest expiry
+          const firstSub = subscriptions[0];
+          const pkg = firstSub.package as { name: string } | null;
           
           status = {
             merchantId,
             merchantName: merchant.name,
             canTransact: remaining > 0,
             remainingQuota: remaining,
-            totalQuota: subscription.transaction_quota,
-            usedQuota: subscription.used_quota,
-            expiresAt: subscription.expired_at,
-            packageName: pkg?.name || null,
+            totalQuota: totalQuota,
+            usedQuota: usedQuota,
+            expiresAt: firstSub.expired_at,
+            packageName: pkg?.name || (subscriptions.length > 1 ? `${pkg?.name} (+${subscriptions.length - 1} paket)` : pkg?.name) || null,
           };
         } else {
           status = {

@@ -150,11 +150,25 @@ export function AssignPackageDialog({
 
       if (merchantError) throw merchantError;
 
-      // If there was a previous active subscription, mark it as replaced
+      // If there was a previous active subscription, accumulate quota and mark as COMPLETED
       if (currentSubscription) {
+        const remainingQuota = currentSubscription.transaction_quota - currentSubscription.used_quota;
+        if (remainingQuota > 0) {
+          await supabase
+            .from('merchant_subscriptions')
+            .update({ 
+              transaction_quota: selectedPkg.transaction_quota + remainingQuota,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', newSub.id);
+        }
+
         await supabase
           .from('merchant_subscriptions')
-          .update({ status: 'REPLACED' })
+          .update({ 
+            status: 'COMPLETED',
+            updated_at: new Date().toISOString()
+          })
           .eq('id', currentSubscription.id);
       }
 

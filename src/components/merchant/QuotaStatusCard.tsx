@@ -40,8 +40,8 @@ export function QuotaStatusCard() {
           return;
         }
 
-        // Get active subscription
-        const { data: subscription } = await supabase
+        // Get active subscriptions
+        const { data: subscriptions } = await supabase
           .from('merchant_subscriptions')
           .select(`
             transaction_quota,
@@ -52,19 +52,21 @@ export function QuotaStatusCard() {
           .eq('merchant_id', merchant.id)
           .eq('status', 'ACTIVE')
           .gte('expired_at', new Date().toISOString())
-          .order('expired_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .order('expired_at', { ascending: true });
 
-        if (subscription) {
-          const pkg = subscription.package as { name: string } | null;
+        if (subscriptions && subscriptions.length > 0) {
+          const totalQuota = subscriptions.reduce((sum, sub) => sum + sub.transaction_quota, 0);
+          const usedQuota = subscriptions.reduce((sum, sub) => sum + sub.used_quota, 0);
+          const firstSub = subscriptions[0];
+          const pkg = firstSub.package as { name: string } | null;
+          
           setStatus({
             hasActiveSubscription: true,
-            remainingQuota: subscription.transaction_quota - subscription.used_quota,
-            totalQuota: subscription.transaction_quota,
-            usedQuota: subscription.used_quota,
-            expiresAt: subscription.expired_at,
-            packageName: pkg?.name || null,
+            remainingQuota: totalQuota - usedQuota,
+            totalQuota: totalQuota,
+            usedQuota: usedQuota,
+            expiresAt: firstSub.expired_at,
+            packageName: pkg?.name || (subscriptions.length > 1 ? `${pkg?.name} (+${subscriptions.length - 1})` : pkg?.name) || null,
           });
         } else {
           setStatus({
