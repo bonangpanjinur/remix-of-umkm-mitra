@@ -29,6 +29,7 @@ import {
   Region,
 } from '@/lib/addressApi';
 import { AdminLocationPicker } from './AdminLocationPicker';
+import { getAvailableMerchantUsers, type MerchantUser } from '@/lib/adminApi';
 
 interface MerchantAddDialogProps {
   open: boolean;
@@ -73,8 +74,12 @@ export function MerchantAddDialog({
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingVillages, setLoadingVillages] = useState(false);
   
+  const [availableUsers, setAvailableUsers] = useState<MerchantUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
+    user_id: '',
     phone: '',
     province_code: '',
     province_name: '',
@@ -101,12 +106,25 @@ export function MerchantAddDialog({
     location_lng: null as number | null,
   });
 
-  // Load provinces on dialog open
+  // Load provinces and available users on dialog open
   useEffect(() => {
     if (open) {
       loadProvinces();
+      loadAvailableUsers();
     }
   }, [open]);
+
+  const loadAvailableUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const users = await getAvailableMerchantUsers();
+      setAvailableUsers(users);
+    } catch (error) {
+      console.error('Error loading available users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const loadProvinces = async () => {
     setLoadingProvinces(true);
@@ -281,6 +299,7 @@ export function MerchantAddDialog({
         .from('merchants')
         .insert({
           name: formData.name,
+          user_id: (formData.user_id === 'none_value' || !formData.user_id) ? null : formData.user_id,
           phone: formData.phone || null,
           address: formData.address || null,
           open_time: formData.open_time,
@@ -313,6 +332,7 @@ export function MerchantAddDialog({
       // Reset form
       setFormData({
         name: '',
+        user_id: '',
         phone: '',
         province_code: '',
         province_name: '',
@@ -411,32 +431,67 @@ export function MerchantAddDialog({
                     checked={formData.is_verified}
                     onCheckedChange={(v) => setFormData({ ...formData, is_verified: v })}
                   />
-                  <Label>Terverifikasi</Label>
-                </div>
-              </div>
-            </div>
-
-            
-            <div className="grid grid-cols-2 gap-4">
+                  <Label>Terverifikasi</Label>            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nama Merchant *</Label>
+                <Label htmlFor="name">Nama Merchant *</Label>
                 <Input
+                  id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Nama toko/usaha"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Nomor Telepon *</Label>
+                <Label htmlFor="user_id">Pemilik (User Merchant)</Label>
+                <Select
+                  value={formData.user_id}
+                  onValueChange={(v) => setFormData({ ...formData, user_id: v })}
+                  disabled={loadingUsers}
+                >
+                  <SelectTrigger id="user_id">
+                    <SelectValue placeholder={loadingUsers ? "Memuat user..." : "Pilih pemilik (opsional)"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none_value">-- Belum Ada Pemilik --</SelectItem>
+                    {availableUsers.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.full_name || 'Tanpa Nama'} ({user.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Nomor Telepon *</Label>
                 <Input
+                  id="phone"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="08xxxxxxxxxx"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="category">Kategori Bisnis</Label>
+                <Select
+                  value={formData.business_category}
+                  onValueChange={(v) => setFormData({ ...formData, business_category: v })}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>    <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="space-y-2">
                 <Label>Kategori Bisnis</Label>
                 <Select

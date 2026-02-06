@@ -23,6 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AddressDropdowns } from './AddressDropdowns';
 import { AdminLocationPicker } from './AdminLocationPicker';
+import { getAvailableMerchantUsers, type MerchantUser } from '@/lib/adminApi';
 
 interface MerchantEditDialogProps {
   open: boolean;
@@ -30,6 +31,7 @@ interface MerchantEditDialogProps {
   merchantId: string;
   initialData: {
     name: string;
+    user_id?: string | null;
     phone: string | null;
     address: string | null;
     province: string | null;
@@ -76,8 +78,12 @@ export function MerchantEditDialog({
   onSuccess,
 }: MerchantEditDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<MerchantUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
+    user_id: '',
     phone: '',
     address: '',
     province_code: '',
@@ -106,6 +112,7 @@ export function MerchantEditDialog({
     if (open && initialData) {
       setFormData({
         name: initialData.name || '',
+        user_id: initialData.user_id || '',
         phone: initialData.phone || '',
         address: initialData.address || '',
         province_code: '',
@@ -129,8 +136,21 @@ export function MerchantEditDialog({
         location_lat: initialData.location_lat ?? null,
         location_lng: initialData.location_lng ?? null,
       });
+      loadAvailableUsers(initialData.user_id);
     }
   }, [open, initialData]);
+
+  const loadAvailableUsers = async (currentUserId?: string | null) => {
+    setLoadingUsers(true);
+    try {
+      const users = await getAvailableMerchantUsers(currentUserId);
+      setAvailableUsers(users);
+    } catch (error) {
+      console.error('Error loading available users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const handleAddressChange = (data: {
     provinceCode: string;
@@ -167,6 +187,7 @@ export function MerchantEditDialog({
         .from('merchants')
         .update({
           name: formData.name,
+          user_id: (formData.user_id === 'none_value' || !formData.user_id) ? null : formData.user_id,
           phone: formData.phone || null,
           address: formData.address || null,
           province: formData.province_name || null,
@@ -224,12 +245,53 @@ export function MerchantEditDialog({
                 />
               </div>
               <div className="space-y-2">
+                <Label>Pemilik (User Merchant)</Label>
+                <Select
+                  value={formData.user_id || 'none_value'}
+                  onValueChange={(v) => setFormData({ ...formData, user_id: v })}
+                  disabled={loadingUsers}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingUsers ? "Memuat user..." : "Pilih pemilik"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none_value">-- Belum Ada Pemilik --</SelectItem>
+                    {availableUsers.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.full_name || 'Tanpa Nama'} ({user.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label>Nomor Telepon</Label>
                 <Input
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   placeholder="08xxxxxxxxxx"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Kategori Bisnis</Label>
+                <Select
+                  value={formData.business_category}
+                  onValueChange={(v) => setFormData({ ...formData, business_category: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUSINESS_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
