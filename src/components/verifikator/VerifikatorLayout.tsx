@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { VerifikatorSidebar } from './VerifikatorSidebar';
 import { Menu } from 'lucide-react';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +43,9 @@ export function VerifikatorLayout({ children, title, subtitle }: VerifikatorLayo
               <h1 className="font-semibold lg:text-xl truncate">{title}</h1>
               {subtitle && <p className="hidden lg:block text-muted-foreground text-xs">{subtitle}</p>}
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationDropdown />
           </div>
         </div>
 

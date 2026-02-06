@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import { AdminSidebar } from './AdminSidebar';
 import { fetchAdminStats } from '@/lib/adminApi';
 import { Menu, X } from 'lucide-react';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -107,7 +108,10 @@ export function AdminLayout({ children, title, subtitle, rightElement }: AdminLa
               {subtitle && <p className="hidden lg:block text-muted-foreground text-xs">{subtitle}</p>}
             </div>
           </div>
-          {rightElement && <div>{rightElement}</div>}
+          <div className="flex items-center gap-2">
+            <NotificationDropdown />
+            {rightElement && <div>{rightElement}</div>}
+          </div>
         </div>
 
         {/* Content (Scrollable) */}

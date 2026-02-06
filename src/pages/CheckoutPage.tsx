@@ -449,6 +449,27 @@ export default function CheckoutPage() {
           return total + (calculateCreditCost(item.product.price, tiers) * item.quantity);
         }, 0);
 
+        // Send notification to merchant about new order
+        try {
+          const { data: merchant } = await supabase
+            .from('merchants')
+            .select('user_id')
+            .eq('id', merchantId)
+            .single();
+
+          if (merchant?.user_id) {
+            await supabase.rpc('send_notification', {
+              p_user_id: merchant.user_id,
+              p_title: 'Pesanan Baru!',
+              p_message: `Ada pesanan baru senilai ${formatPrice(merchantTotal)} dari ${addressData.name}`,
+              p_type: 'order',
+              p_link: `/merchant/orders`,
+            });
+          }
+        } catch (notifError) {
+          console.error('Error sending order notification:', notifError);
+        }
+
         // Use merchant quota after successful order
         const quotaUsed = await useMerchantQuotaForOrder(merchantId, creditsToUse);
         if (quotaUsed) {
