@@ -138,10 +138,26 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/register/village" element={<RegisterVillagePage />} />
-              <Route path="/register/merchant" element={<RegisterMerchantPage />} />
-              <Route path="/register/courier" element={<RegisterCourierPage />} />
+              <Route path="/register" element={
+                <ProtectedRoute>
+                  <RegisterPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/register/village" element={
+                <ProtectedRoute>
+                  <RegisterVillagePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/register/merchant" element={
+                <ProtectedRoute>
+                  <RegisterMerchantPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/register/courier" element={
+                <ProtectedRoute>
+                  <RegisterCourierPage />
+                </ProtectedRoute>
+              } />
               <Route path="/install" element={<InstallPage />} />
               <Route path="/unauthorized" element={<UnauthorizedPage />} />
 

@@ -251,7 +251,7 @@ export default function AccountPage() {
           )}
           
           {/* Merchant/Village Registration CTA - Only show for logged in users who are NOT yet merchants or admins */}
-          {user && !isMerchant && !isAdminDesa && !isAdmin && (
+          {user && !isMerchant && !isAdminDesa && !isAdmin && !isVerifikator && !isCourier && (
             <div 
               onClick={() => navigate('/register')}
               className="bg-gradient-to-r from-primary to-brand-dark rounded-2xl p-5 mb-6 text-primary-foreground relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"

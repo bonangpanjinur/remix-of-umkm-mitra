@@ -293,18 +293,8 @@ export default function AuthPage() {
           </p>
         </div>
 
-        {/* Registration for Villages/Merchants */}
-        <div className="mt-8 pt-6 border-t border-border">
-          <p className="text-sm text-center text-muted-foreground mb-3">
-            Ingin mendaftarkan usaha atau desa wisata?
-          </p>
-          <Link 
-            to="/register"
-            className="block w-full py-3 px-4 text-center text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition"
-          >
-            Daftar sebagai Desa / Pedagang UMKM
-          </Link>
-        </div>
+        {/* Registration for Villages/Merchants - Hidden for non-logged in users as per requirement */}
+        {/* User must login first to see registration CTA in Account Page */}
       </motion.div>
     </div>
   );
