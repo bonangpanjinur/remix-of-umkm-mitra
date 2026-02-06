@@ -340,3 +340,130 @@ export async function deleteVillage(id: string): Promise<boolean> {
   }
   return true;
 }
+
+export interface MerchantUser {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone_number: string | null;
+}
+
+/**
+ * Fetches users with 'merchant' role who are not yet linked to any merchant.
+ * If currentUserId is provided, it will be included in the results even if already linked.
+ */
+export async function getAvailableMerchantUsers(currentUserId?: string | null): Promise<MerchantUser[]> {
+  try {
+    // 1. Get all users with 'merchant' role
+    const { data: allMerchants, error: usersError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, phone_number')
+      .eq('role', 'merchant');
+
+    if (usersError) throw usersError;
+    if (!allMerchants) return [];
+
+    // 2. Get all user_ids already used in merchants table
+    const { data: usedMerchants, error: merchantsError } = await supabase
+      .from('merchants')
+      .select('user_id')
+      .not('user_id', 'is', null);
+
+    if (merchantsError) throw merchantsError;
+
+    const usedUserIds = new Set(usedMerchants?.map(m => m.user_id) || []);
+
+    // 3. Filter: Available = AllMerchantUsers - UsedUserIds (+ currentUserId)
+    return allMerchants.filter(user => {
+      if (currentUserId && user.id === currentUserId) return true;
+      return !usedUserIds.has(user.id);
+    });
+  } catch (error) {
+    console.error('Error fetching available merchant users:', error);
+    return [];
+  }
+}
+
+export async function getVillages(): Promise<Village[]> {
+  const { data, error } = await supabase
+    .from('villages')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching villages:', error);
+    return [];
+  }
+
+  return (data || []).map(v => ({
+    id: v.id,
+    name: v.name,
+    district: v.district,
+    regency: v.regency,
+    subdistrict: v.subdistrict || '',
+    description: v.description || '',
+    image: v.image_url || '',
+    isActive: v.is_active,
+    registrationStatus: v.registration_status,
+    registeredAt: v.registered_at,
+    contactName: v.contact_name,
+    contactPhone: v.contact_phone,
+    contactEmail: v.contact_email,
+    latitude: v.location_lat,
+    longitude: v.location_lng,
+  }));
+}
+
+export async function createVillage(village: Partial<Village>): Promise<boolean> {
+  const { error } = await supabase
+    .from('villages')
+    .insert({
+      name: village.name,
+      description: village.description,
+      image_url: village.image,
+      district: village.district,
+      regency: village.regency,
+      subdistrict: village.subdistrict,
+      location_lat: village.latitude,
+      location_lng: village.longitude,
+      contact_name: village.contactName,
+      contact_phone: village.contactPhone,
+      contact_email: village.contactEmail,
+      is_active: village.isActive ?? true,
+      registration_status: 'APPROVED',
+      registered_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    console.error('Error creating village:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function updateVillage(id: string, village: Partial<Village>): Promise<boolean> {
+  const { error } = await supabase
+    .from('villages')
+    .update({
+      name: village.name,
+      description: village.description,
+      image_url: village.image,
+      district: village.district,
+      regency: village.regency,
+      subdistrict: village.subdistrict,
+      location_lat: village.latitude,
+      location_lng: village.longitude,
+      contact_name: village.contactName,
+      contact_phone: village.contactPhone,
+      contact_email: village.contactEmail,
+      is_active: village.isActive,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error updating village:', error);
+    return false;
+  }
+  return true;
+}
