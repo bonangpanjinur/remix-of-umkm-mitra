@@ -108,7 +108,7 @@ export default function AuthPage() {
             variant: 'destructive',
           });
         } else {
-          toast({ title: 'Akun berhasil dibuat!', description: 'Silakan login' });
+          toast({ title: 'Akun berhasil di daftarkan, silahkan cek email untuk verifikasi' });
           setIsLogin(true);
           setFormData({ fullName: '', email: '', password: '', confirmPassword: '' });
         }
@@ -201,6 +201,7 @@ export default function AuthPage() {
                 className="pl-10"
               />
             </div>
+            <p className="text-[10px] text-muted-foreground italic">masukan email yang aktif untuk verifikasi</p>
             {errors.email && (
               <p className="text-xs text-destructive">{errors.email}</p>
             )}
