@@ -299,6 +299,7 @@ export function MerchantAddDialog({
         .from('merchants')
         .insert({
           name: formData.name,
+          // user_id is automatically handled by Supabase Trigger (on_merchant_signup) if null
           user_id: (formData.user_id === 'none_value' || !formData.user_id) ? null : formData.user_id,
           phone: formData.phone || null,
           address: formData.address || null,

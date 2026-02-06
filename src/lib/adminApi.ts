@@ -156,20 +156,9 @@ export async function fetchPendingCouriers(): Promise<Courier[]> {
 
 // Approval actions
 export async function approveMerchant(id: string): Promise<boolean> {
-  // 1. Get the merchant data to find the user_id
-  const { data: merchant, error: fetchError } = await supabase
-    .from('merchants')
-    .select('user_id')
-    .eq('id', id)
-    .single();
-
-  if (fetchError || !merchant) {
-    console.error('Error fetching merchant for approval:', fetchError);
-    return false;
-  }
-
-  // 2. Update merchant status
-  const { error: updateError } = await supabase
+  // Update merchant status
+  // Role assignment is now handled by Supabase Trigger (on_merchant_approval)
+  const { error } = await supabase
     .from('merchants')
     .update({
       registration_status: 'APPROVED',
@@ -178,34 +167,9 @@ export async function approveMerchant(id: string): Promise<boolean> {
     })
     .eq('id', id);
 
-  if (updateError) {
-    console.error('Error approving merchant:', updateError);
+  if (error) {
+    console.error('Error approving merchant:', error);
     return false;
-  }
-
-  // 3. Assign 'merchant' role to the user if they have a user_id
-  if (merchant.user_id) {
-    // Check if user already has the merchant role
-    const { data: existingRole } = await supabase
-      .from('user_roles')
-      .select('id')
-      .eq('user_id', merchant.user_id)
-      .eq('role', 'merchant')
-      .maybeSingle();
-
-    if (!existingRole) {
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: merchant.user_id,
-          role: 'merchant'
-        });
-      
-      if (roleError) {
-        console.error('Error assigning merchant role:', roleError);
-        // We don't return false here because the merchant status was already updated successfully
-      }
-    }
   }
 
   return true;
