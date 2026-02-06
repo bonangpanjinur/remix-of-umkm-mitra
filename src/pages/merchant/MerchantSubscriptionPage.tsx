@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Package, CreditCard, AlertTriangle, Clock, TrendingUp, Upload, CheckCircle2, XCircle, Info, ExternalLink, X, FileCheck } from 'lucide-react';
+import { Package, CreditCard, AlertTriangle, Clock, TrendingUp, Upload, CheckCircle2, XCircle, Info, ExternalLink, X, FileCheck, History } from 'lucide-react';
 import { MerchantLayout } from '@/components/merchant/MerchantLayout';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Card,
   CardContent,
@@ -51,6 +52,16 @@ interface Subscription {
   };
 }
 
+interface QuotaLog {
+  id: string;
+  action_type: string;
+  previous_quota: number;
+  change_amount: number;
+  new_quota: number;
+  notes: string;
+  created_at: string;
+}
+
 interface TransactionPackage {
   id: string;
   name: string;
@@ -73,6 +84,7 @@ export default function MerchantSubscriptionPage() {
   const [merchant, setMerchant] = useState<{ id: string } | null>(null);
   const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
   const [subscriptionHistory, setSubscriptionHistory] = useState<Subscription[]>([]);
+  const [quotaLogs, setQuotaLogs] = useState<QuotaLog[]>([]);
   const [availablePackages, setAvailablePackages] = useState<TransactionPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
@@ -153,6 +165,16 @@ export default function MerchantSubscriptionPage() {
         .order('transaction_quota', { ascending: true });
         
       setAvailablePackages((packagesData || []) as TransactionPackage[]);
+
+      // Get quota logs
+      const { data: logsData } = await supabase
+        .from('quota_audit_logs')
+        .select('*')
+        .eq('merchant_id', merchantData.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      setQuotaLogs((logsData || []) as QuotaLog[]);
 
       // Get payment settings
       const { data: settingsData } = await supabase
@@ -500,43 +522,99 @@ export default function MerchantSubscriptionPage() {
         ))}
       </div>
 
-      {/* Subscription History */}
-      {subscriptionHistory.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Riwayat Pembelian
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-2 font-medium">Paket</th>
-                    <th className="text-left py-3 px-2 font-medium">Kuota</th>
-                    <th className="text-left py-3 px-2 font-medium">Harga</th>
-                    <th className="text-left py-3 px-2 font-medium">Status</th>
-                    <th className="text-left py-3 px-2 font-medium">Tanggal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {subscriptionHistory.map((sub) => (
-                    <tr key={sub.id} className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => openDetailModal(sub)}>
-                      <td className="py-3 px-2">{sub.package.name}</td>
-                      <td className="py-3 px-2">{sub.transaction_quota}</td>
-                      <td className="py-3 px-2">{formatPrice(sub.payment_amount)}</td>
-                      <td className="py-3 px-2">{getPaymentStatusBadge(sub.payment_status)}</td>
-                      <td className="py-3 px-2">{new Date(sub.created_at).toLocaleDateString('id-ID')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* History Section */}
+      <div className="space-y-6 mb-8">
+        <div className="flex items-center gap-2">
+          <History className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-bold">Riwayat & Transparansi</h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Subscription History */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Riwayat Pembelian
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {subscriptionHistory.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-3 px-2 font-medium">Paket</th>
+                        <th className="text-left py-3 px-2 font-medium">Status</th>
+                        <th className="text-left py-3 px-2 font-medium">Tanggal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subscriptionHistory.map((sub) => (
+                        <tr key={sub.id} className="border-b hover:bg-muted/50 cursor-pointer" onClick={() => openDetailModal(sub)}>
+                          <td className="py-3 px-2">
+                            <p className="font-medium">{sub.package.name}</p>
+                            <p className="text-xs text-muted-foreground">{sub.transaction_quota} Kredit</p>
+                          </td>
+                          <td className="py-3 px-2">{getPaymentStatusBadge(sub.payment_status)}</td>
+                          <td className="py-3 px-2 text-xs">{new Date(sub.created_at).toLocaleDateString('id-ID')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">Belum ada riwayat pembelian.</div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Quota Logs */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Riwayat Kuota
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {quotaLogs.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="px-2">Aksi</TableHead>
+                        <TableHead className="px-2">+/-</TableHead>
+                        <TableHead className="px-2">Sisa</TableHead>
+                        <TableHead className="px-2">Tanggal</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {quotaLogs.map((log) => (
+                        <TableRow key={log.id} className="text-xs">
+                          <TableCell className="px-2 font-medium">
+                            {log.action_type === 'PURCHASE' ? 'Beli' : 
+                             log.action_type === 'USAGE' ? 'Pakai' : 'Sesuai'}
+                          </TableCell>
+                          <TableCell className={`px-2 ${log.change_amount > 0 ? "text-green-600" : "text-red-600"}`}>
+                            {log.change_amount > 0 ? `+${log.change_amount}` : log.change_amount}
+                          </TableCell>
+                          <TableCell className="px-2 font-bold">{log.new_quota}</TableCell>
+                          <TableCell className="px-2 text-muted-foreground">
+                            {new Date(log.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">Belum ada riwayat kuota.</div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Buy Package Dialog */}
       <Dialog open={buyDialogOpen} onOpenChange={setBuyDialogOpen}>

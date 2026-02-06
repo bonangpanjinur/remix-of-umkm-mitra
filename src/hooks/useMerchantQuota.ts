@@ -39,7 +39,7 @@ export function useMerchantQuota(merchantIds: string[]) {
         if (!merchant) continue;
 
         // Get active subscriptions
-        const { data: subscriptions, error: subError } = await supabase
+        const { data: subscriptions } = await supabase
           .from('merchant_subscriptions')
           .select(`
             transaction_quota,
@@ -124,7 +124,31 @@ export function useMerchantQuota(merchantIds: string[]) {
 
   useEffect(() => {
     checkQuotas();
-  }, [checkQuotas]);
+
+    // PHASE 3: Real-time synchronization using onSnapshot (Supabase Realtime)
+    if (merchantIds.length === 0) return;
+
+    const subscription = supabase
+      .channel('quota-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'merchant_subscriptions',
+          filter: `merchant_id=in.(${merchantIds.join(',')})`
+        },
+        () => {
+          // Refetch when any subscription changes
+          checkQuotas();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [merchantIds, checkQuotas]);
 
   const canProceedCheckout = blockedMerchants.length === 0 && !loading;
 
@@ -138,11 +162,13 @@ export function useMerchantQuota(merchantIds: string[]) {
 }
 
 // Function to use merchant quota after successful order
-export async function useMerchantQuotaForOrder(merchantId: string, credits: number = 1): Promise<boolean> {
+export async function useMerchantQuotaForOrder(merchantId: string, credits: number = 1, orderId?: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc('use_merchant_quota', {
+    // PHASE 1: Use improved RPC with orderId validation
+    const { data, error } = await supabase.rpc('use_merchant_quota_v2', {
       p_merchant_id: merchantId,
       p_credits: credits,
+      p_order_id: orderId
     });
 
     if (error) {
