@@ -230,9 +230,11 @@ export default function MerchantSubscriptionPage() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data } = supabase.storage
         .from('merchants')
         .getPublicUrl(filePath);
+      
+      const publicUrl = data.publicUrl;
 
       const { error: updateError } = await supabase
         .from('merchant_subscriptions')

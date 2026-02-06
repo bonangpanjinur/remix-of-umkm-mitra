@@ -370,9 +370,11 @@ export default function AdminTransactionQuotaPage() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data } = supabase.storage
         .from('merchants')
         .getPublicUrl(filePath);
+      
+      const publicUrl = data.publicUrl;
 
       setPaymentSettings({ ...paymentSettings, qris_url: publicUrl });
       toast.success('QRIS berhasil diunggah');
