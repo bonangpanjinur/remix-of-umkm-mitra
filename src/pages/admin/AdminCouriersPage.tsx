@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Bike, Eye, Check, X, MoreHorizontal, Edit, Trash2, RefreshCw } from 'lucide-react';
+import { Bike, Check, X, MoreHorizontal, Edit, Trash2, RefreshCw, UserCheck } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +24,7 @@ interface CourierRow {
   city: string;
   district: string;
   subdistrict: string;
+  province: string;
   address: string;
   ktp_number: string;
   vehicle_type: string;
@@ -35,11 +35,14 @@ interface CourierRow {
   registered_at: string | null;
   last_location_update: string | null;
   village_id: string | null;
+  user_id: string | null;
   villages?: { name: string } | null;
+  // Enriched fields
+  owner_name: string | null;
+  owner_phone: string | null;
 }
 
 export default function AdminCouriersPage() {
-  const navigate = useNavigate();
   const [couriers, setCouriers] = useState<CourierRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourier, setSelectedCourier] = useState<CourierRow | null>(null);
@@ -51,19 +54,38 @@ export default function AdminCouriersPage() {
       const { data, error } = await supabase
         .from('couriers')
         .select(`
-          id, name, phone, email, city, district, subdistrict, address, 
+          id, name, phone, email, city, district, subdistrict, province, address,
           ktp_number, vehicle_type, vehicle_plate, registration_status, 
-          status, is_available, registered_at, last_location_update, village_id,
+          status, is_available, registered_at, last_location_update, village_id, user_id,
           villages(name)
         `)
         .order('registered_at', { ascending: false });
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      setCouriers(data || []);
+      // Enrich with profile info for linked users
+      const rawCouriers = data || [];
+      const userIds = rawCouriers.filter(c => c.user_id).map(c => c.user_id!);
+      
+      let profileMap = new Map<string, { full_name: string | null; phone: string | null }>();
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, phone')
+          .in('user_id', userIds);
+        
+        for (const p of (profiles || [])) {
+          profileMap.set(p.user_id, { full_name: p.full_name, phone: p.phone });
+        }
+      }
+
+      const enriched: CourierRow[] = rawCouriers.map(c => ({
+        ...c,
+        owner_name: c.user_id ? (profileMap.get(c.user_id)?.full_name || null) : null,
+        owner_phone: c.user_id ? (profileMap.get(c.user_id)?.phone || null) : null,
+      }));
+      
+      setCouriers(enriched);
     } catch (error: any) {
       console.error('Error fetching couriers:', error);
       toast.error('Gagal memuat data kurir: ' + (error.message || 'Terjadi kesalahan'));
@@ -79,74 +101,39 @@ export default function AdminCouriersPage() {
   const handleApprove = async (id: string) => {
     try {
       const success = await approveCourier(id);
-      if (success) {
-        toast.success('Kurir berhasil disetujui');
-        fetchCouriers();
-      } else {
-        toast.error('Gagal menyetujui kurir');
-      }
-    } catch (error) {
-      toast.error('Terjadi kesalahan saat menyetujui kurir');
-    }
+      if (success) { toast.success('Kurir berhasil disetujui'); fetchCouriers(); }
+      else toast.error('Gagal menyetujui kurir');
+    } catch { toast.error('Terjadi kesalahan saat menyetujui kurir'); }
   };
 
   const handleReject = async (id: string) => {
     const reason = prompt('Alasan penolakan:');
-    if (reason === null) return; // User cancelled
-    if (!reason.trim()) {
-      toast.error('Alasan penolakan wajib diisi');
-      return;
-    }
-    
+    if (reason === null) return;
+    if (!reason.trim()) { toast.error('Alasan penolakan wajib diisi'); return; }
     try {
       const success = await rejectCourier(id, reason);
-      if (success) {
-        toast.success('Kurir ditolak');
-        fetchCouriers();
-      } else {
-        toast.error('Gagal menolak kurir');
-      }
-    } catch (error) {
-      toast.error('Terjadi kesalahan saat menolak kurir');
-    }
+      if (success) { toast.success('Kurir ditolak'); fetchCouriers(); }
+      else toast.error('Gagal menolak kurir');
+    } catch { toast.error('Terjadi kesalahan saat menolak kurir'); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus kurir ini? Semua data terkait akan ikut terhapus.')) return;
-
+    if (!confirm('Apakah Anda yakin ingin menghapus kurir ini?')) return;
     try {
-      const { error } = await supabase
-        .from('couriers')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('couriers').delete().eq('id', id);
       if (error) throw error;
       toast.success('Kurir berhasil dihapus');
       fetchCouriers();
     } catch (error: any) {
-      console.error('Error deleting courier:', error);
       toast.error('Gagal menghapus kurir: ' + (error.message || 'Terjadi kesalahan'));
     }
   };
 
-  const handleEdit = (courier: CourierRow) => {
-    setSelectedCourier(courier);
-    setEditDialogOpen(true);
-  };
-
   const getStatusBadge = (regStatus: string, status: string, isAvailable: boolean) => {
-    if (regStatus === 'PENDING') {
-      return <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200">Menunggu</Badge>;
-    }
-    if (regStatus === 'REJECTED') {
-      return <Badge variant="destructive">Ditolak</Badge>;
-    }
-    if (status === 'ACTIVE' && isAvailable) {
-      return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200">Online</Badge>;
-    }
-    if (status === 'ACTIVE') {
-      return <Badge variant="outline" className="text-muted-foreground">Offline</Badge>;
-    }
+    if (regStatus === 'PENDING') return <Badge variant="secondary" className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200">Menunggu</Badge>;
+    if (regStatus === 'REJECTED') return <Badge variant="destructive">Ditolak</Badge>;
+    if (status === 'ACTIVE' && isAvailable) return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200">Online</Badge>;
+    if (status === 'ACTIVE') return <Badge variant="outline" className="text-muted-foreground">Offline</Badge>;
     return <Badge variant="outline" className="bg-slate-100 text-slate-500">Nonaktif</Badge>;
   };
 
@@ -162,6 +149,25 @@ export default function AdminCouriersPage() {
             <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full w-fit mt-1">
               {item.villages.name}
             </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'owner',
+      header: 'Akun User',
+      render: (item: CourierRow) => (
+        <div className="text-sm">
+          {item.owner_name ? (
+            <div className="flex items-center gap-1.5">
+              <UserCheck className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+              <div>
+                <p className="font-medium text-primary">{item.owner_name}</p>
+                {item.owner_phone && <p className="text-xs text-muted-foreground">{item.owner_phone}</p>}
+              </div>
+            </div>
+          ) : (
+            <span className="text-muted-foreground italic text-xs">Belum terhubung</span>
           )}
         </div>
       ),
@@ -206,9 +212,7 @@ export default function AdminCouriersPage() {
       render: (item: CourierRow) => {
         if (!item.last_location_update) return <span className="text-muted-foreground text-xs">-</span>;
         const date = new Date(item.last_location_update);
-        const now = new Date();
-        const diffMinutes = Math.floor((now.getTime() - date.getTime()) / 60000);
-        
+        const diffMinutes = Math.floor((Date.now() - date.getTime()) / 60000);
         if (diffMinutes < 5) return <span className="text-emerald-600 font-medium text-xs">Baru saja</span>;
         if (diffMinutes < 60) return <span className="text-xs">{diffMinutes} menit lalu</span>;
         if (diffMinutes < 1440) return <span className="text-xs">{Math.floor(diffMinutes / 60)} jam lalu</span>;
@@ -221,32 +225,24 @@ export default function AdminCouriersPage() {
       render: (item: CourierRow) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => handleEdit(item)}>
-              <Edit className="h-4 w-4 mr-2 text-blue-500" />
-              Edit Data
+            <DropdownMenuItem onClick={() => { setSelectedCourier(item); setEditDialogOpen(true); }}>
+              <Edit className="h-4 w-4 mr-2 text-blue-500" />Edit Data
             </DropdownMenuItem>
-            
             {item.registration_status === 'PENDING' && (
               <>
                 <DropdownMenuItem onClick={() => handleApprove(item.id)} className="text-emerald-600 focus:text-emerald-600">
-                  <Check className="h-4 w-4 mr-2" />
-                  Setujui Kurir
+                  <Check className="h-4 w-4 mr-2" />Setujui Kurir
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleReject(item.id)} className="text-amber-600 focus:text-amber-600">
-                  <X className="h-4 w-4 mr-2" />
-                  Tolak Kurir
+                  <X className="h-4 w-4 mr-2" />Tolak Kurir
                 </DropdownMenuItem>
               </>
             )}
-            
             <DropdownMenuItem onClick={() => handleDelete(item.id)} className="text-destructive focus:text-destructive">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Hapus Kurir
+              <Trash2 className="h-4 w-4 mr-2" />Hapus Kurir
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -299,15 +295,8 @@ export default function AdminCouriersPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={fetchCouriers} 
-            disabled={loading}
-            className="h-9"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+          <Button variant="outline" size="sm" onClick={fetchCouriers} disabled={loading} className="h-9">
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />Refresh
           </Button>
           <AddCourierDialog onSuccess={fetchCouriers} />
         </div>
@@ -316,8 +305,8 @@ export default function AdminCouriersPage() {
       <DataTable
         data={couriers}
         columns={columns}
-        searchKeys={['name', 'phone', 'email', 'district', 'city']}
-        searchPlaceholder="Cari kurir (nama, telp, lokasi)..."
+        searchKeys={['name', 'phone', 'email', 'district', 'city', 'owner_name']}
+        searchPlaceholder="Cari kurir (nama, telp, lokasi, user)..."
         filters={filters}
         loading={loading}
         emptyMessage="Belum ada data kurir yang sesuai kriteria"
