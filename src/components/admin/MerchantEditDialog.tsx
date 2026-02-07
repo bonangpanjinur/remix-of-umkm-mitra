@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Clock, Save, CreditCard, QrCode } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Clock, Save, CreditCard, QrCode, UserCheck, Shield } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,9 +22,14 @@ import {
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { AddressDropdowns } from './AddressDropdowns';
 import { AdminLocationPicker } from './AdminLocationPicker';
-import { getAvailableMerchantUsers, type MerchantUser } from '@/lib/adminApi';
+import {
+  fetchProvinces,
+  fetchRegencies,
+  fetchDistricts,
+  fetchVillages as fetchVillagesList,
+  Region,
+} from '@/lib/addressApi';
 
 interface MerchantEditDialogProps {
   open: boolean;
@@ -58,8 +63,22 @@ interface MerchantEditDialogProps {
     qris_image_url?: string | null;
     payment_cod_enabled?: boolean | null;
     payment_transfer_enabled?: boolean | null;
+    verifikator_code?: string | null;
+    classification_price?: string | null;
   };
   onSuccess: () => void;
+}
+
+interface OwnerInfo {
+  user_id: string;
+  full_name: string | null;
+  phone: string | null;
+}
+
+interface AvailableUser {
+  user_id: string;
+  full_name: string | null;
+  phone: string | null;
 }
 
 const BUSINESS_CATEGORIES = [
@@ -78,6 +97,24 @@ const BADGES = [
   { value: 'NEW', label: 'New' },
 ];
 
+const PRICE_CLASSIFICATIONS = [
+  { value: 'none', label: 'Belum ditentukan' },
+  { value: 'UNDER_5K', label: 'Sangat Murah (< Rp 5.000)' },
+  { value: 'FROM_5K_TO_10K', label: 'Murah (Rp 5.000 - Rp 10.000)' },
+  { value: 'FROM_10K_TO_20K', label: 'Sedang (Rp 10.000 - Rp 20.000)' },
+  { value: 'ABOVE_20K', label: 'Premium (> Rp 20.000)' },
+];
+
+// Helper: find code by matching name (case-insensitive, trimmed)
+function findCodeByName(items: Region[], name: string | null): string {
+  if (!name) return '';
+  const normalized = name.trim().toUpperCase();
+  const match = items.find(
+    (item) => item.name.trim().toUpperCase() === normalized
+  );
+  return match?.code || '';
+}
+
 export function MerchantEditDialog({
   open,
   onOpenChange,
@@ -86,8 +123,18 @@ export function MerchantEditDialog({
   onSuccess,
 }: MerchantEditDialogProps) {
   const [loading, setLoading] = useState(false);
-  const [availableUsers, setAvailableUsers] = useState<MerchantUser[]>([]);
+
+  // Owner state
+  const [currentOwner, setCurrentOwner] = useState<OwnerInfo | null>(null);
+  const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Address state
+  const [provinces, setProvinces] = useState<Region[]>([]);
+  const [regencies, setRegencies] = useState<Region[]>([]);
+  const [districts, setDistricts] = useState<Region[]>([]);
+  const [villages, setVillages] = useState<Region[]>([]);
+  const [loadingAddr, setLoadingAddr] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -121,82 +168,232 @@ export function MerchantEditDialog({
     qris_image_url: null as string | null,
     payment_cod_enabled: true,
     payment_transfer_enabled: true,
+    verifikator_code: '',
+    classification_price: 'none',
   });
 
+  // Initialize form + load address codes + load users when dialog opens
   useEffect(() => {
-    if (open && initialData) {
-      setFormData({
-        name: initialData.name || '',
-        user_id: initialData.user_id || '',
-        phone: initialData.phone || '',
-        address: initialData.address || '',
-        province_code: '',
-        province_name: initialData.province || '',
-        regency_code: '',
-        regency_name: initialData.city || '',
-        district_code: '',
-        district_name: initialData.district || '',
-        village_code: '',
-        village_name: initialData.subdistrict || '',
-        open_time: initialData.open_time || '08:00',
-        close_time: initialData.close_time || '17:00',
-        business_category: initialData.business_category || 'kuliner',
-        business_description: initialData.business_description || '',
-        is_open: initialData.is_open ?? true,
-        status: initialData.status || 'ACTIVE',
-        badge: initialData.badge || 'none',
-        order_mode: initialData.order_mode || 'ADMIN_ASSISTED',
-        is_verified: initialData.is_verified ?? false,
-        image_url: initialData.image_url || null,
-        cover_image_url: initialData.cover_image_url || null,
-        location_lat: initialData.location_lat ?? null,
-        location_lng: initialData.location_lng ?? null,
-        bank_name: initialData.bank_name || '',
-        bank_account_number: initialData.bank_account_number || '',
-        bank_account_name: initialData.bank_account_name || '',
-        qris_image_url: initialData.qris_image_url || null,
-        payment_cod_enabled: initialData.payment_cod_enabled ?? true,
-        payment_transfer_enabled: initialData.payment_transfer_enabled ?? true,
-      });
-      loadAvailableUsers(initialData.user_id);
-    }
+    if (!open || !initialData) return;
+
+    setFormData({
+      name: initialData.name || '',
+      user_id: initialData.user_id || '',
+      phone: initialData.phone || '',
+      address: initialData.address || '',
+      province_code: '',
+      province_name: initialData.province || '',
+      regency_code: '',
+      regency_name: initialData.city || '',
+      district_code: '',
+      district_name: initialData.district || '',
+      village_code: '',
+      village_name: initialData.subdistrict || '',
+      open_time: initialData.open_time || '08:00',
+      close_time: initialData.close_time || '17:00',
+      business_category: initialData.business_category || 'kuliner',
+      business_description: initialData.business_description || '',
+      is_open: initialData.is_open ?? true,
+      status: initialData.status || 'ACTIVE',
+      badge: initialData.badge || 'none',
+      order_mode: initialData.order_mode || 'ADMIN_ASSISTED',
+      is_verified: initialData.is_verified ?? false,
+      image_url: initialData.image_url || null,
+      cover_image_url: initialData.cover_image_url || null,
+      location_lat: initialData.location_lat ?? null,
+      location_lng: initialData.location_lng ?? null,
+      bank_name: initialData.bank_name || '',
+      bank_account_number: initialData.bank_account_number || '',
+      bank_account_name: initialData.bank_account_name || '',
+      qris_image_url: initialData.qris_image_url || null,
+      payment_cod_enabled: initialData.payment_cod_enabled ?? true,
+      payment_transfer_enabled: initialData.payment_transfer_enabled ?? true,
+      verifikator_code: initialData.verifikator_code || '',
+      classification_price: initialData.classification_price || 'none',
+    });
+
+    loadOwnerAndUsers(initialData.user_id);
+    resolveAddressCodes(initialData.province, initialData.city, initialData.district, initialData.subdistrict);
   }, [open, initialData]);
 
-  const loadAvailableUsers = async (currentUserId?: string | null) => {
+  // --- Owner / User logic ---
+  const loadOwnerAndUsers = async (currentUserId?: string | null) => {
     setLoadingUsers(true);
     try {
-      const users = await getAvailableMerchantUsers(currentUserId);
-      setAvailableUsers(users);
+      // 1. Load current owner profile
+      if (currentUserId) {
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, phone')
+          .eq('user_id', currentUserId)
+          .maybeSingle();
+        setCurrentOwner(ownerProfile || { user_id: currentUserId, full_name: null, phone: null });
+      } else {
+        setCurrentOwner(null);
+      }
+
+      // 2. Get all merchant-role user_ids
+      const { data: merchantRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'merchant');
+
+      if (!merchantRoles || merchantRoles.length === 0) {
+        setAvailableUsers([]);
+        return;
+      }
+
+      const merchantUserIds = merchantRoles.map((r) => r.user_id);
+
+      // 3. Get profiles
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone')
+        .in('user_id', merchantUserIds);
+
+      // 4. Get already-linked user_ids (excluding this merchant)
+      const { data: linkedMerchants } = await supabase
+        .from('merchants')
+        .select('user_id')
+        .not('user_id', 'is', null)
+        .neq('id', merchantId);
+
+      const linkedUserIds = new Set(linkedMerchants?.map((m) => m.user_id) || []);
+
+      // 5. Filter: only users NOT linked to other merchants, also exclude current owner
+      const available = (profiles || []).filter(
+        (p) => !linkedUserIds.has(p.user_id) && p.user_id !== currentUserId
+      );
+      setAvailableUsers(available);
     } catch (error) {
-      console.error('Error loading available users:', error);
+      console.error('Error loading users:', error);
     } finally {
       setLoadingUsers(false);
     }
   };
 
-  const handleAddressChange = (data: {
-    provinceCode: string;
-    provinceName: string;
-    regencyCode: string;
-    regencyName: string;
-    districtCode: string;
-    districtName: string;
-    villageCode: string;
-    villageName: string;
-  }) => {
-    setFormData(prev => ({
+  // --- Address name-to-code resolution ---
+  const resolveAddressCodes = async (
+    provinceName: string | null,
+    cityName: string | null,
+    districtName: string | null,
+    villageName: string | null
+  ) => {
+    if (!provinceName) return;
+
+    setLoadingAddr(true);
+    try {
+      // Load provinces and resolve
+      const provList = await fetchProvinces();
+      setProvinces(provList);
+      const provCode = findCodeByName(provList, provinceName);
+
+      if (!provCode) {
+        setLoadingAddr(false);
+        return;
+      }
+
+      // Load regencies and resolve
+      const regList = await fetchRegencies(provCode);
+      setRegencies(regList);
+      const regCode = findCodeByName(regList, cityName);
+
+      let distCode = '';
+      let villCode = '';
+
+      if (regCode) {
+        const distList = await fetchDistricts(regCode);
+        setDistricts(distList);
+        distCode = findCodeByName(distList, districtName);
+
+        if (distCode) {
+          const villList = await fetchVillagesList(distCode);
+          setVillages(villList);
+          villCode = findCodeByName(villList, villageName);
+        }
+      }
+
+      // Set resolved codes
+      setFormData((prev) => ({
+        ...prev,
+        province_code: provCode,
+        regency_code: regCode,
+        district_code: distCode,
+        village_code: villCode,
+      }));
+    } catch (error) {
+      console.error('Error resolving address codes:', error);
+    } finally {
+      setLoadingAddr(false);
+    }
+  };
+
+  // --- Address dropdown handlers ---
+  const handleProvinceChange = async (code: string) => {
+    const selected = provinces.find((p) => p.code === code);
+    if (!selected) return;
+    setRegencies([]);
+    setDistricts([]);
+    setVillages([]);
+    setFormData((prev) => ({
       ...prev,
-      province_code: data.provinceCode,
-      province_name: data.provinceName,
-      regency_code: data.regencyCode,
-      regency_name: data.regencyName,
-      district_code: data.districtCode,
-      district_name: data.districtName,
-      village_code: data.villageCode,
-      village_name: data.villageName,
+      province_code: code,
+      province_name: selected.name,
+      regency_code: '',
+      regency_name: '',
+      district_code: '',
+      district_name: '',
+      village_code: '',
+      village_name: '',
+    }));
+    const regList = await fetchRegencies(code);
+    setRegencies(regList);
+  };
+
+  const handleRegencyChange = async (code: string) => {
+    const selected = regencies.find((r) => r.code === code);
+    if (!selected) return;
+    setDistricts([]);
+    setVillages([]);
+    setFormData((prev) => ({
+      ...prev,
+      regency_code: code,
+      regency_name: selected.name,
+      district_code: '',
+      district_name: '',
+      village_code: '',
+      village_name: '',
+    }));
+    const distList = await fetchDistricts(code);
+    setDistricts(distList);
+  };
+
+  const handleDistrictChange = async (code: string) => {
+    const selected = districts.find((d) => d.code === code);
+    if (!selected) return;
+    setVillages([]);
+    setFormData((prev) => ({
+      ...prev,
+      district_code: code,
+      district_name: selected.name,
+      village_code: '',
+      village_name: '',
+    }));
+    const villList = await fetchVillagesList(code);
+    setVillages(villList);
+  };
+
+  const handleVillageChange = (code: string) => {
+    const selected = villages.find((v) => v.code === code);
+    if (!selected) return;
+    setFormData((prev) => ({
+      ...prev,
+      village_code: code,
+      village_name: selected.name,
     }));
   };
 
+  // --- Submit ---
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
       toast.error('Nama merchant wajib diisi');
@@ -205,11 +402,12 @@ export function MerchantEditDialog({
 
     setLoading(true);
     try {
+      const userId = formData.user_id === 'none_value' || !formData.user_id ? null : formData.user_id;
       const { error } = await supabase
         .from('merchants')
         .update({
           name: formData.name,
-          user_id: (formData.user_id === 'none_value' || !formData.user_id) ? null : formData.user_id,
+          user_id: userId,
           phone: formData.phone || null,
           address: formData.address || null,
           province: formData.province_name || null,
@@ -235,6 +433,8 @@ export function MerchantEditDialog({
           qris_image_url: formData.qris_image_url || null,
           payment_cod_enabled: formData.payment_cod_enabled,
           payment_transfer_enabled: formData.payment_transfer_enabled,
+          verifikator_code: formData.verifikator_code || null,
+          classification_price: formData.classification_price === 'none' ? null : formData.classification_price,
           updated_at: new Date().toISOString(),
         })
         .eq('id', merchantId);
@@ -263,7 +463,6 @@ export function MerchantEditDialog({
           {/* Photo Uploads */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Foto Merchant</h3>
-            
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label>Foto Sampul</Label>
@@ -293,7 +492,7 @@ export function MerchantEditDialog({
           {/* Basic Info */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Informasi Dasar</h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Nama Merchant *</Label>
@@ -304,29 +503,6 @@ export function MerchantEditDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Pemilik (User Merchant)</Label>
-                <Select
-                  value={formData.user_id || 'none_value'}
-                  onValueChange={(v) => setFormData({ ...formData, user_id: v })}
-                  disabled={loadingUsers}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={loadingUsers ? "Memuat user..." : "Pilih pemilik"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none_value">-- Belum Ada Pemilik --</SelectItem>
-                    {availableUsers.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.full_name || 'Tanpa Nama'} ({user.phone || user.user_id.slice(0, 8)})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
                 <Label>Nomor Telepon</Label>
                 <Input
                   value={formData.phone}
@@ -334,20 +510,33 @@ export function MerchantEditDialog({
                   placeholder="08xxxxxxxxxx"
                 />
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Kategori Bisnis</Label>
                 <Select
                   value={formData.business_category}
                   onValueChange={(v) => setFormData({ ...formData, business_category: v })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {BUSINESS_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
+                      <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Klasifikasi Harga</Label>
+                <Select
+                  value={formData.classification_price}
+                  onValueChange={(v) => setFormData({ ...formData, classification_price: v })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PRICE_CLASSIFICATIONS.map((cls) => (
+                      <SelectItem key={cls.value} value={cls.value}>{cls.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -365,21 +554,163 @@ export function MerchantEditDialog({
             </div>
           </div>
 
+          {/* Owner (User Merchant) */}
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <UserCheck className="h-4 w-4" />
+              Pemilik (User Merchant)
+            </h3>
+
+            {/* Show current owner */}
+            {currentOwner ? (
+              <div className="p-3 bg-accent/50 rounded-lg border border-accent">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-primary" />
+                  Terhubung dengan: <span className="text-primary">{currentOwner.full_name || 'Tanpa Nama'}</span>
+                  {currentOwner.phone && (
+                    <span className="text-muted-foreground">({currentOwner.phone})</span>
+                  )}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic p-3 bg-muted rounded-lg">
+                Belum terhubung ke user manapun
+              </p>
+            )}
+
+            {/* Dropdown: change/assign owner */}
+            <div className="space-y-2">
+              <Label>{currentOwner ? 'Ganti Pemilik' : 'Pilih Pemilik'}</Label>
+              <Select
+                value={formData.user_id || 'none_value'}
+                onValueChange={(v) => setFormData({ ...formData, user_id: v })}
+                disabled={loadingUsers}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingUsers ? 'Memuat user...' : 'Pilih pemilik'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none_value">-- Lepas Pemilik --</SelectItem>
+                  {currentOwner && (
+                    <SelectItem value={currentOwner.user_id}>
+                      ✅ {currentOwner.full_name || 'Tanpa Nama'} ({currentOwner.phone || currentOwner.user_id.slice(0, 8)}) — saat ini
+                    </SelectItem>
+                  )}
+                  {availableUsers.map((user) => (
+                    <SelectItem key={user.user_id} value={user.user_id}>
+                      {user.full_name || 'Tanpa Nama'} ({user.phone || user.user_id.slice(0, 8)})
+                    </SelectItem>
+                  ))}
+                  {availableUsers.length === 0 && !currentOwner && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      Tidak ada user merchant tersedia
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Hanya menampilkan user dengan role merchant yang belum terhubung ke merchant lain
+              </p>
+            </div>
+          </div>
+
+          {/* Verifikator Code */}
+          <div className="space-y-4 border-t pt-4">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Verifikator
+            </h3>
+            <div className="space-y-2">
+              <Label>Kode Verifikator</Label>
+              <Input
+                value={formData.verifikator_code}
+                onChange={(e) => setFormData({ ...formData, verifikator_code: e.target.value })}
+                placeholder="Masukkan kode verifikator (jika ada)"
+              />
+              <p className="text-xs text-muted-foreground">
+                Kode yang digunakan saat pendaftaran merchant oleh verifikator
+              </p>
+            </div>
+          </div>
+
           {/* Location */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Lokasi & Alamat</h3>
-            
-            <AddressDropdowns
-              provinceCode={formData.province_code}
-              regencyCode={formData.regency_code}
-              districtCode={formData.district_code}
-              villageCode={formData.village_code}
-              provinceName={formData.province_name}
-              regencyName={formData.regency_name}
-              districtName={formData.district_name}
-              villageName={formData.village_name}
-              onChange={handleAddressChange}
-            />
+
+            {loadingAddr && (
+              <p className="text-xs text-muted-foreground animate-pulse">Memuat data alamat...</p>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Provinsi</Label>
+                <Select
+                  value={formData.province_code}
+                  onValueChange={handleProvinceChange}
+                  disabled={loadingAddr}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.province_name || 'Pilih Provinsi'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {provinces.map((p) => (
+                      <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Kabupaten/Kota</Label>
+                <Select
+                  value={formData.regency_code}
+                  onValueChange={handleRegencyChange}
+                  disabled={!formData.province_code || loadingAddr}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.regency_name || 'Pilih Kabupaten/Kota'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regencies.map((r) => (
+                      <SelectItem key={r.code} value={r.code}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Kecamatan</Label>
+                <Select
+                  value={formData.district_code}
+                  onValueChange={handleDistrictChange}
+                  disabled={!formData.regency_code || loadingAddr}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.district_name || 'Pilih Kecamatan'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {districts.map((d) => (
+                      <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Kelurahan/Desa</Label>
+                <Select
+                  value={formData.village_code}
+                  onValueChange={handleVillageChange}
+                  disabled={!formData.district_code || loadingAddr}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.village_name || 'Pilih Kelurahan/Desa'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {villages.map((v) => (
+                      <SelectItem key={v.code} value={v.code}>{v.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             <div className="space-y-2">
               <Label>Alamat Lengkap</Label>
@@ -400,7 +731,7 @@ export function MerchantEditDialog({
           {/* Operational */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Operasional & Sistem</h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
@@ -433,9 +764,7 @@ export function MerchantEditDialog({
                   value={formData.status}
                   onValueChange={(v) => setFormData({ ...formData, status: v })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ACTIVE">Aktif</SelectItem>
                     <SelectItem value="INACTIVE">Nonaktif</SelectItem>
@@ -449,9 +778,7 @@ export function MerchantEditDialog({
                   value={formData.order_mode}
                   onValueChange={(v) => setFormData({ ...formData, order_mode: v })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ADMIN_ASSISTED">Dibantu Admin</SelectItem>
                     <SelectItem value="SELF">Mandiri</SelectItem>
@@ -464,14 +791,10 @@ export function MerchantEditDialog({
                   value={formData.badge}
                   onValueChange={(v) => setFormData({ ...formData, badge: v })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {BADGES.map((b) => (
-                      <SelectItem key={b.value} value={b.value}>
-                        {b.label}
-                      </SelectItem>
+                      <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -502,7 +825,7 @@ export function MerchantEditDialog({
               <CreditCard className="h-4 w-4" />
               Pengaturan Pembayaran
             </h3>
-            
+
             <div className="flex gap-6">
               <div className="flex items-center gap-2">
                 <Switch
