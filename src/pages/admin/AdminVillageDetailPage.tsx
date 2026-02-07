@@ -35,7 +35,6 @@ import { VillageEditDialog } from '@/components/admin/VillageEditDialog';
 interface VillageDetail {
   id: string;
   name: string;
-  province: string | null;
   district: string;
   regency: string;
   subdistrict: string | null;
@@ -49,6 +48,8 @@ interface VillageDetail {
   registered_at: string | null;
   approved_at: string | null;
   rejection_reason: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
 }
 
 interface MerchantSummary {
@@ -309,7 +310,7 @@ export default function AdminVillageDetailPage() {
                 <div>
                   <h2 className="text-xl font-bold">{village.name}</h2>
                   <p className="text-sm text-muted-foreground">
-                    {village.subdistrict || village.district}, {village.regency}{village.province ? `, ${village.province}` : ''}
+                    {village.subdistrict || village.district}, {village.regency}
                   </p>
                 </div>
                 {getStatusBadge(village.registration_status, village.is_active)}

@@ -436,14 +436,14 @@ export function BrandingAppearanceSettings({ isSaving: externalIsSaving, onSave 
                   <Label>Logo URL</Label>
                   <div className="flex gap-2">
                     <Input value={logoUrl || ''} onChange={(e) => setLogoUrl(e.target.value)} />
-                    <ImageUpload onUploadSuccess={(url) => setLogoUrl(url)} />
+                    <ImageUpload bucket="merchant-images" path={`branding/logo-${Date.now()}`} value={logoUrl} onChange={(url) => setLogoUrl(url || '')} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Favicon URL</Label>
                   <div className="flex gap-2">
                     <Input value={faviconUrl || ''} onChange={(e) => setFaviconUrl(e.target.value)} />
-                    <ImageUpload onUploadSuccess={(url) => setFaviconUrl(url)} />
+                    <ImageUpload bucket="merchant-images" path={`branding/favicon-${Date.now()}`} value={faviconUrl} onChange={(url) => setFaviconUrl(url || '')} />
                   </div>
                 </div>
               </div>
@@ -666,7 +666,7 @@ export function BrandingAppearanceSettings({ isSaving: externalIsSaving, onSave 
                   <Label className="text-right">OG Image URL</Label>
                   <div className="col-span-3 flex gap-2">
                     <Input value={seoFormData.og_image} onChange={(e) => setSeoFormData({...seoFormData, og_image: e.target.value})} />
-                    <ImageUpload onUploadSuccess={(url) => setSeoFormData({...seoFormData, og_image: url})} />
+                    <ImageUpload bucket="merchant-images" path={`branding/og-${Date.now()}`} value={seoFormData.og_image} onChange={(url) => setSeoFormData({...seoFormData, og_image: url || ''})} />
                   </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">

@@ -166,15 +166,8 @@ export default function MerchantSubscriptionPage() {
         
       setAvailablePackages((packagesData || []) as TransactionPackage[]);
 
-      // Get quota logs
-      const { data: logsData } = await supabase
-        .from('quota_audit_logs')
-        .select('*')
-        .eq('merchant_id', merchantData.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-      
-      setQuotaLogs((logsData || []) as QuotaLog[]);
+      // Skip quota logs since the table doesn't exist yet
+      setQuotaLogs([]);
 
       // Get payment settings
       const { data: settingsData } = await supabase
@@ -184,7 +177,7 @@ export default function MerchantSubscriptionPage() {
         .maybeSingle();
       
       if (settingsData) {
-        setPaymentSettings(settingsData.value as PaymentSettings);
+        setPaymentSettings(settingsData.value as unknown as PaymentSettings);
       }
     } catch (error) {
       console.error('Error fetching data:', error);

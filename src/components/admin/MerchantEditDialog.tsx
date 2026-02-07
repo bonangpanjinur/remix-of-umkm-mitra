@@ -258,7 +258,7 @@ export function MerchantEditDialog({
                     <SelectItem value="none_value">-- Belum Ada Pemilik --</SelectItem>
                     {availableUsers.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
-                        {user.full_name || 'Tanpa Nama'} ({user.email})
+                        {user.full_name || 'Tanpa Nama'} ({user.phone || user.user_id.slice(0, 8)})
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -405,7 +405,7 @@ export function MerchantProductDetailEditor({ productId, merchantId, onBack }: M
                 </div>
               </div>
 
-              <StockAlerts productId={productId} />
+              <StockAlerts merchantId={merchantId} />
             </CardContent>
           </Card>
         </TabsContent>
