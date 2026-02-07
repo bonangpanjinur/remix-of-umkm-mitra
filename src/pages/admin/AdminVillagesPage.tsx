@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Eye, Check, X, MoreHorizontal, Plus, Edit, Trash2, Image as ImageIcon } from 'lucide-react';
+import { MapPin, Eye, Check, X, MoreHorizontal, Plus, Edit, Trash2, Image as ImageIcon, UserCheck } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { DataTable } from '@/components/admin/DataTable';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,8 @@ interface VillageRow {
   registration_status: string;
   is_active: boolean;
   registered_at: string | null;
+  owner_name: string | null;
+  owner_phone: string | null;
 }
 
 export default function AdminVillagesPage() {
@@ -50,23 +52,57 @@ export default function AdminVillagesPage() {
   const [villages, setVillages] = useState<VillageRow[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Dialog states
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedVillage, setSelectedVillage] = useState<VillageRow | null>(null);
 
-  const fetchVillages = async () => {
+  const fetchVillagesData = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      // Fetch villages
+      const { data: villagesData, error } = await supabase
         .from('villages')
         .select('id, name, regency, district, subdistrict, description, image_url, location_lat, location_lng, contact_name, contact_phone, contact_email, registration_status, is_active, registered_at')
         .order('registered_at', { ascending: false });
 
       if (error) throw error;
+
+      // Fetch user_villages to get owner info
+      const villageIds = (villagesData || []).map(v => v.id);
+      let ownerMap: Record<string, { full_name: string | null; phone: string | null }> = {};
       
-      setVillages((data || []) as unknown as VillageRow[]);
+      if (villageIds.length > 0) {
+        const { data: userVillages } = await supabase
+          .from('user_villages')
+          .select('village_id, user_id')
+          .in('village_id', villageIds);
+        
+        if (userVillages && userVillages.length > 0) {
+          const userIds = userVillages.map(uv => uv.user_id);
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('user_id, full_name, phone')
+            .in('user_id', userIds);
+          
+          const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+          for (const uv of userVillages) {
+            const profile = profileMap.get(uv.user_id);
+            ownerMap[uv.village_id] = {
+              full_name: profile?.full_name || null,
+              phone: profile?.phone || null,
+            };
+          }
+        }
+      }
+
+      const enriched: VillageRow[] = (villagesData || []).map(v => ({
+        ...v,
+        owner_name: ownerMap[v.id]?.full_name || null,
+        owner_phone: ownerMap[v.id]?.phone || null,
+      }));
+      
+      setVillages(enriched);
     } catch (error) {
       console.error('Error fetching villages:', error);
       toast.error('Gagal memuat data desa');
@@ -76,55 +112,34 @@ export default function AdminVillagesPage() {
   };
 
   useEffect(() => {
-    fetchVillages();
+    fetchVillagesData();
   }, []);
 
   const handleApprove = async (id: string) => {
     const success = await approveVillage(id);
-    if (success) {
-      toast.success('Desa wisata berhasil disetujui');
-      fetchVillages();
-    } else {
-      toast.error('Gagal menyetujui desa wisata');
-    }
+    if (success) { toast.success('Desa wisata berhasil disetujui'); fetchVillagesData(); }
+    else toast.error('Gagal menyetujui desa wisata');
   };
 
   const handleReject = async (id: string) => {
     const reason = prompt('Alasan penolakan:');
     if (!reason) return;
-    
     const success = await rejectVillage(id, reason);
-    if (success) {
-      toast.success('Desa wisata ditolak');
-      fetchVillages();
-    } else {
-      toast.error('Gagal menolak desa wisata');
-    }
+    if (success) { toast.success('Desa wisata ditolak'); fetchVillagesData(); }
+    else toast.error('Gagal menolak desa wisata');
   };
 
   const handleDelete = async () => {
     if (!selectedVillage) return;
-    
     const success = await deleteVillage(selectedVillage.id);
-    if (success) {
-      toast.success('Desa wisata berhasil dihapus');
-      fetchVillages();
-      setDeleteDialogOpen(false);
-    } else {
-      toast.error('Gagal menghapus desa wisata');
-    }
+    if (success) { toast.success('Desa wisata berhasil dihapus'); fetchVillagesData(); setDeleteDialogOpen(false); }
+    else toast.error('Gagal menghapus desa wisata');
   };
 
   const getStatusBadge = (regStatus: string, isActive: boolean) => {
-    if (regStatus === 'PENDING') {
-      return <Badge variant="secondary" className="bg-warning/10 text-warning">Menunggu</Badge>;
-    }
-    if (regStatus === 'REJECTED') {
-      return <Badge variant="destructive">Ditolak</Badge>;
-    }
-    if (isActive) {
-      return <Badge className="bg-success/10 text-success">Aktif</Badge>;
-    }
+    if (regStatus === 'PENDING') return <Badge variant="secondary" className="bg-warning/10 text-warning">Menunggu</Badge>;
+    if (regStatus === 'REJECTED') return <Badge variant="destructive">Ditolak</Badge>;
+    if (isActive) return <Badge className="bg-success/10 text-success">Aktif</Badge>;
     return <Badge variant="outline">Nonaktif</Badge>;
   };
 
@@ -135,11 +150,7 @@ export default function AdminVillagesPage() {
       render: (item: VillageRow) => (
         <div className="h-12 w-12 rounded-md overflow-hidden bg-muted flex items-center justify-center border">
           {item.image_url ? (
-            <img 
-              src={item.image_url} 
-              alt={item.name} 
-              className="h-full w-full object-cover"
-            />
+            <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
           ) : (
             <ImageIcon className="h-6 w-6 text-muted-foreground" />
           )}
@@ -167,6 +178,25 @@ export default function AdminVillagesPage() {
       ),
     },
     {
+      key: 'owner',
+      header: 'Pengelola',
+      render: (item: VillageRow) => (
+        <div className="text-sm">
+          {item.owner_name ? (
+            <div className="flex items-center gap-1.5">
+              <UserCheck className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+              <div>
+                <p className="font-medium text-primary">{item.owner_name}</p>
+                {item.owner_phone && <p className="text-xs text-muted-foreground">{item.owner_phone}</p>}
+              </div>
+            </div>
+          ) : (
+            <span className="text-muted-foreground italic text-xs">Belum ada</span>
+          )}
+        </div>
+      ),
+    },
+    {
       key: 'contact',
       header: 'Kontak',
       render: (item: VillageRow) => (
@@ -185,9 +215,7 @@ export default function AdminVillagesPage() {
       key: 'registered_at',
       header: 'Terdaftar',
       render: (item: VillageRow) => 
-        item.registered_at 
-          ? new Date(item.registered_at).toLocaleDateString('id-ID') 
-          : '-',
+        item.registered_at ? new Date(item.registered_at).toLocaleDateString('id-ID') : '-',
     },
     {
       key: 'actions',
@@ -195,43 +223,27 @@ export default function AdminVillagesPage() {
       render: (item: VillageRow) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => navigate(`/admin/villages/${item.id}`)}>
-              <Eye className="h-4 w-4 mr-2" />
-              Lihat Detail
+              <Eye className="h-4 w-4 mr-2" />Lihat Detail
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              setSelectedVillage(item);
-              setEditDialogOpen(true);
-            }}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
+            <DropdownMenuItem onClick={() => { setSelectedVillage(item); setEditDialogOpen(true); }}>
+              <Edit className="h-4 w-4 mr-2" />Edit
             </DropdownMenuItem>
             {item.registration_status === 'PENDING' && (
               <>
                 <DropdownMenuItem onClick={() => handleApprove(item.id)}>
-                  <Check className="h-4 w-4 mr-2" />
-                  Setujui
+                  <Check className="h-4 w-4 mr-2" />Setujui
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleReject(item.id)} className="text-destructive">
-                  <X className="h-4 w-4 mr-2" />
-                  Tolak
+                  <X className="h-4 w-4 mr-2" />Tolak
                 </DropdownMenuItem>
               </>
             )}
-            <DropdownMenuItem 
-              className="text-destructive"
-              onClick={() => {
-                setSelectedVillage(item);
-                setDeleteDialogOpen(true);
-              }}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Hapus
+            <DropdownMenuItem className="text-destructive" onClick={() => { setSelectedVillage(item); setDeleteDialogOpen(true); }}>
+              <Trash2 className="h-4 w-4 mr-2" />Hapus
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -252,36 +264,28 @@ export default function AdminVillagesPage() {
   ];
 
   return (
-    <AdminLayout 
-      title="Manajemen Desa Wisata" 
-      subtitle="Kelola semua desa wisata yang terdaftar"
-    >
+    <AdminLayout title="Manajemen Desa Wisata" subtitle="Kelola semua desa wisata yang terdaftar">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <MapPin className="h-5 w-5 text-primary" />
           <span className="text-muted-foreground text-sm">{villages.length} desa terdaftar</span>
         </div>
         <Button onClick={() => setAddDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Tambah Desa
+          <Plus className="h-4 w-4 mr-2" />Tambah Desa
         </Button>
       </div>
 
       <DataTable
         data={villages}
         columns={columns}
-        searchKeys={['name']}
-        searchPlaceholder="Cari nama desa..."
+        searchKeys={['name', 'owner_name']}
+        searchPlaceholder="Cari nama desa atau pengelola..."
         filters={filters}
         loading={loading}
         emptyMessage="Belum ada desa wisata terdaftar"
       />
 
-      <VillageAddDialog 
-        open={addDialogOpen} 
-        onOpenChange={setAddDialogOpen} 
-        onSuccess={fetchVillages} 
-      />
+      <VillageAddDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} onSuccess={fetchVillagesData} />
 
       {selectedVillage && (
         <VillageEditDialog
@@ -303,7 +307,7 @@ export default function AdminVillagesPage() {
             contact_email: selectedVillage.contact_email,
             is_active: selectedVillage.is_active,
           }}
-          onSuccess={fetchVillages}
+          onSuccess={fetchVillagesData}
         />
       )}
 
