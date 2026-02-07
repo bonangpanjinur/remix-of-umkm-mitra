@@ -343,7 +343,7 @@ export default function RegisterMerchantPage() {
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <PageHeader title="Pendaftaran Berhasil" showBackButton={false} />
+        <PageHeader title="Pendaftaran Berhasil" showBack={false} />
         <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <motion.div
             initial={{ scale: 0 }}
@@ -644,7 +644,8 @@ export default function RegisterMerchantPage() {
               <div className="space-y-2">
                 <Label>Titik Lokasi (Opsional)</Label>
                 <MerchantLocationPicker 
-                  onLocationSelect={(lat, lng) => setMerchantLocation({ lat, lng })}
+                  value={merchantLocation}
+                  onChange={(location) => setMerchantLocation(location)}
                 />
                 <p className="text-[10px] text-muted-foreground">Gunakan titik lokasi agar pembeli lebih mudah menemukan usaha Anda.</p>
               </div>

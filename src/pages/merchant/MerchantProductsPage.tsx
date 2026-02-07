@@ -396,7 +396,7 @@ export default function MerchantProductsPage() {
         columns={columns}
         data={products}
         loading={loading}
-        searchKey="name"
+        searchKeys={['name']}
         filters={filters}
       />
 

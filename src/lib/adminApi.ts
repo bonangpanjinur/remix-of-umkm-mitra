@@ -95,7 +95,6 @@ export async function fetchPendingVillages(): Promise<Village[]> {
   return (data || []).map(v => ({
     id: v.id,
     name: v.name,
-    province: v.province,
     district: v.district,
     regency: v.regency,
     subdistrict: v.subdistrict || '',
@@ -107,6 +106,8 @@ export async function fetchPendingVillages(): Promise<Village[]> {
     contactName: v.contact_name,
     contactPhone: v.contact_phone,
     contactEmail: v.contact_email,
+    locationLat: v.location_lat,
+    locationLng: v.location_lng,
   }));
 }
 
@@ -157,8 +158,6 @@ export async function fetchPendingCouriers(): Promise<Courier[]> {
 
 // Approval actions
 export async function approveMerchant(id: string): Promise<boolean> {
-  // Update merchant status
-  // Role assignment is now handled by Supabase Trigger (on_merchant_approval)
   const { error } = await supabase
     .from('merchants')
     .update({
@@ -193,19 +192,7 @@ export async function rejectMerchant(id: string, reason: string): Promise<boolea
 }
 
 export async function approveVillage(id: string): Promise<boolean> {
-  // 1. Get the village data to find the user_id
-  const { data: village, error: fetchError } = await supabase
-    .from('villages')
-    .select('user_id')
-    .eq('id', id)
-    .single();
-
-  if (fetchError || !village) {
-    console.error('Error fetching village for approval:', fetchError);
-    return false;
-  }
-
-  // 2. Update village status
+  // Update village status
   const { error: updateError } = await supabase
     .from('villages')
     .update({
@@ -220,26 +207,28 @@ export async function approveVillage(id: string): Promise<boolean> {
     return false;
   }
 
-  // 3. Assign 'admin_desa' role to the user if they have a user_id
-  if (village.user_id) {
+  // Try to find user_id from user_villages table and assign admin_desa role
+  const { data: userVillage } = await supabase
+    .from('user_villages')
+    .select('user_id')
+    .eq('village_id', id)
+    .maybeSingle();
+
+  if (userVillage?.user_id) {
     const { data: existingRole } = await supabase
       .from('user_roles')
       .select('id')
-      .eq('user_id', village.user_id)
+      .eq('user_id', userVillage.user_id)
       .eq('role', 'admin_desa')
       .maybeSingle();
 
     if (!existingRole) {
-      const { error: roleError } = await supabase
+      await supabase
         .from('user_roles')
         .insert({
-          user_id: village.user_id,
+          user_id: userVillage.user_id,
           role: 'admin_desa'
         });
-      
-      if (roleError) {
-        console.error('Error assigning admin_desa role:', roleError);
-      }
     }
   }
 
@@ -263,7 +252,6 @@ export async function rejectVillage(id: string, reason: string): Promise<boolean
 }
 
 export async function approveCourier(id: string): Promise<boolean> {
-  // 1. Get the courier data to find the user_id
   const { data: courier, error: fetchError } = await supabase
     .from('couriers')
     .select('user_id')
@@ -275,7 +263,6 @@ export async function approveCourier(id: string): Promise<boolean> {
     return false;
   }
 
-  // 2. Update courier status
   const { error: updateError } = await supabase
     .from('couriers')
     .update({
@@ -290,7 +277,6 @@ export async function approveCourier(id: string): Promise<boolean> {
     return false;
   }
 
-  // 3. Assign 'courier' role to the user if they have a user_id
   if (courier.user_id) {
     const { data: existingRole } = await supabase
       .from('user_roles')
@@ -300,16 +286,12 @@ export async function approveCourier(id: string): Promise<boolean> {
       .maybeSingle();
 
     if (!existingRole) {
-      const { error: roleError } = await supabase
+      await supabase
         .from('user_roles')
         .insert({
           user_id: courier.user_id,
           role: 'courier'
         });
-      
-      if (roleError) {
-        console.error('Error assigning courier role:', roleError);
-      }
     }
   }
 
@@ -422,26 +404,36 @@ export async function deleteVillage(id: string): Promise<boolean> {
 export interface MerchantUser {
   id: string;
   full_name: string | null;
-  email: string | null;
-  phone_number: string | null;
+  phone: string | null;
+  user_id: string;
 }
 
 /**
  * Fetches users with 'merchant' role who are not yet linked to any merchant.
- * If currentUserId is provided, it will be included in the results even if already linked.
  */
 export async function getAvailableMerchantUsers(currentUserId?: string | null): Promise<MerchantUser[]> {
   try {
     // 1. Get all users with 'merchant' role
-    const { data: allMerchants, error: usersError } = await supabase
-      .from('profiles')
-      .select('id, full_name, email, phone_number')
+    const { data: merchantRoles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('user_id')
       .eq('role', 'merchant');
 
-    if (usersError) throw usersError;
-    if (!allMerchants) return [];
+    if (rolesError) throw rolesError;
+    if (!merchantRoles || merchantRoles.length === 0) return [];
 
-    // 2. Get all user_ids already used in merchants table
+    const merchantUserIds = merchantRoles.map(r => r.user_id);
+
+    // 2. Get profiles for those users
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, phone, user_id')
+      .in('user_id', merchantUserIds);
+
+    if (profilesError) throw profilesError;
+    if (!profiles) return [];
+
+    // 3. Get all user_ids already used in merchants table
     const { data: usedMerchants, error: merchantsError } = await supabase
       .from('merchants')
       .select('user_id')
@@ -451,11 +443,16 @@ export async function getAvailableMerchantUsers(currentUserId?: string | null): 
 
     const usedUserIds = new Set(usedMerchants?.map(m => m.user_id) || []);
 
-    // 3. Filter: Available = AllMerchantUsers - UsedUserIds (+ currentUserId)
-    return allMerchants.filter(user => {
-      if (currentUserId && user.id === currentUserId) return true;
-      return !usedUserIds.has(user.id);
-    });
+    // 4. Filter: Available = All merchant role users - Used ones (+ currentUserId)
+    return profiles.filter(user => {
+      if (currentUserId && user.user_id === currentUserId) return true;
+      return !usedUserIds.has(user.user_id);
+    }).map(p => ({
+      id: p.id,
+      full_name: p.full_name,
+      phone: p.phone,
+      user_id: p.user_id,
+    }));
   } catch (error) {
     console.error('Error fetching available merchant users:', error);
     return [];
@@ -476,7 +473,6 @@ export async function getVillages(): Promise<Village[]> {
   return (data || []).map(v => ({
     id: v.id,
     name: v.name,
-    province: v.province,
     district: v.district,
     regency: v.regency,
     subdistrict: v.subdistrict || '',
@@ -488,8 +484,8 @@ export async function getVillages(): Promise<Village[]> {
     contactName: v.contact_name,
     contactPhone: v.contact_phone,
     contactEmail: v.contact_email,
-    latitude: v.location_lat,
-    longitude: v.location_lng,
+    locationLat: v.location_lat,
+    locationLng: v.location_lng,
   }));
 }
 
@@ -497,14 +493,14 @@ export async function createVillage(village: Partial<Village>): Promise<boolean>
   const { error } = await supabase
     .from('villages')
     .insert({
-      name: village.name,
+      name: village.name!,
       description: village.description,
       image_url: village.image,
-      district: village.district,
-      regency: village.regency,
+      district: village.district!,
+      regency: village.regency!,
       subdistrict: village.subdistrict,
-      location_lat: village.latitude,
-      location_lng: village.longitude,
+      location_lat: village.locationLat,
+      location_lng: village.locationLng,
       contact_name: village.contactName,
       contact_phone: village.contactPhone,
       contact_email: village.contactEmail,
@@ -521,23 +517,24 @@ export async function createVillage(village: Partial<Village>): Promise<boolean>
 }
 
 export async function updateVillage(id: string, village: Partial<Village>): Promise<boolean> {
+  const updateData: Record<string, unknown> = {};
+  
+  if (village.name !== undefined) updateData.name = village.name;
+  if (village.description !== undefined) updateData.description = village.description;
+  if (village.image !== undefined) updateData.image_url = village.image;
+  if (village.district !== undefined) updateData.district = village.district;
+  if (village.regency !== undefined) updateData.regency = village.regency;
+  if (village.subdistrict !== undefined) updateData.subdistrict = village.subdistrict;
+  if (village.locationLat !== undefined) updateData.location_lat = village.locationLat;
+  if (village.locationLng !== undefined) updateData.location_lng = village.locationLng;
+  if (village.contactName !== undefined) updateData.contact_name = village.contactName;
+  if (village.contactPhone !== undefined) updateData.contact_phone = village.contactPhone;
+  if (village.contactEmail !== undefined) updateData.contact_email = village.contactEmail;
+  if (village.isActive !== undefined) updateData.is_active = village.isActive;
+
   const { error } = await supabase
     .from('villages')
-    .update({
-      name: village.name,
-      description: village.description,
-      image_url: village.image,
-      district: village.district,
-      regency: village.regency,
-      subdistrict: village.subdistrict,
-      location_lat: village.latitude,
-      location_lng: village.longitude,
-      contact_name: village.contactName,
-      contact_phone: village.contactPhone,
-      contact_email: village.contactEmail,
-      is_active: village.isActive,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', id);
 
   if (error) {

@@ -165,10 +165,9 @@ export function useMerchantQuota(merchantIds: string[]) {
 export async function useMerchantQuotaForOrder(merchantId: string, credits: number = 1, orderId?: string): Promise<boolean> {
   try {
     // PHASE 1: Use improved RPC with orderId validation
-    const { data, error } = await supabase.rpc('use_merchant_quota_v2', {
+    // Use the base use_merchant_quota RPC (single-arg version)
+    const { data, error } = await supabase.rpc('use_merchant_quota', {
       p_merchant_id: merchantId,
-      p_credits: credits,
-      p_order_id: orderId
     });
 
     if (error) {

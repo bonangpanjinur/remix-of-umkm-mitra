@@ -30,7 +30,6 @@ import { VillageEditDialog } from '@/components/admin/VillageEditDialog';
 interface VillageRow {
   id: string;
   name: string;
-  province: string;
   regency: string;
   district: string;
   subdistrict: string | null;
@@ -62,12 +61,12 @@ export default function AdminVillagesPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('villages')
-        .select('id, name, province, regency, district, subdistrict, description, image_url, location_lat, location_lng, contact_name, contact_phone, contact_email, registration_status, is_active, registered_at')
+        .select('id, name, regency, district, subdistrict, description, image_url, location_lat, location_lng, contact_name, contact_phone, contact_email, registration_status, is_active, registered_at')
         .order('registered_at', { ascending: false });
 
       if (error) throw error;
       
-      setVillages(data as VillageRow[]);
+      setVillages((data || []) as unknown as VillageRow[]);
     } catch (error) {
       console.error('Error fetching villages:', error);
       toast.error('Gagal memuat data desa');
@@ -163,7 +162,7 @@ export default function AdminVillagesPage() {
       render: (item: VillageRow) => (
         <div className="text-sm">
           <p className="font-medium">{item.district}</p>
-          <p className="text-xs text-muted-foreground">{item.regency}{item.province ? `, ${item.province}` : ''}</p>
+          <p className="text-xs text-muted-foreground">{item.regency}</p>
         </div>
       ),
     },
@@ -291,7 +290,7 @@ export default function AdminVillagesPage() {
           villageId={selectedVillage.id}
           initialData={{
             name: selectedVillage.name,
-            province: selectedVillage.province,
+            province: '',
             regency: selectedVillage.regency,
             district: selectedVillage.district,
             subdistrict: selectedVillage.subdistrict,

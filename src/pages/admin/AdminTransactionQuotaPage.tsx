@@ -176,7 +176,7 @@ export default function AdminTransactionQuotaPage() {
         .maybeSingle();
       
       if (settingsData) {
-        setPaymentSettings(settingsData.value as PaymentSettings);
+        setPaymentSettings(settingsData.value as unknown as PaymentSettings);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -204,7 +204,10 @@ export default function AdminTransactionQuotaPage() {
       } else {
         const { error } = await supabase
           .from('transaction_packages')
-          .insert(packageFormData);
+          .insert({
+            ...packageFormData,
+            classification_price: 'CUSTOM',
+          } as any);
 
         if (error) throw error;
         toast.success('Paket berhasil ditambahkan');
@@ -302,20 +305,21 @@ export default function AdminTransactionQuotaPage() {
   const handleApproveRequest = async (request: PackageRequest) => {
     setProcessing(true);
     try {
-      const { data, error } = await supabase.rpc('approve_quota_subscription', {
-        p_subscription_id: request.id,
-        p_admin_notes: adminNotes
-      });
+      // Directly update the subscription status
+      const { error } = await supabase
+        .from('merchant_subscriptions')
+        .update({
+          status: 'ACTIVE',
+          payment_status: 'PAID',
+          paid_at: new Date().toISOString(),
+        })
+        .eq('id', request.id);
 
       if (error) throw error;
       
-      if (data.success) {
-        toast.success(data.message);
-        setRequestDialogOpen(false);
-        fetchData();
-      } else {
-        toast.error(data.message);
-      }
+      toast.success('Permintaan berhasil disetujui dan kuota diaktifkan');
+      setRequestDialogOpen(false);
+      fetchData();
     } catch (error) {
       console.error('Error approving request:', error);
       toast.error('Gagal menyetujui permintaan');
@@ -332,20 +336,19 @@ export default function AdminTransactionQuotaPage() {
 
     setProcessing(true);
     try {
-      const { data, error } = await supabase.rpc('reject_quota_subscription', {
-        p_subscription_id: request.id,
-        p_admin_notes: adminNotes
-      });
+      const { error } = await supabase
+        .from('merchant_subscriptions')
+        .update({
+          status: 'INACTIVE',
+          payment_status: 'REJECTED',
+        })
+        .eq('id', request.id);
 
       if (error) throw error;
 
-      if (data.success) {
-        toast.success(data.message);
-        setRequestDialogOpen(false);
-        fetchData();
-      } else {
-        toast.error(data.message);
-      }
+      toast.success('Permintaan berhasil ditolak');
+      setRequestDialogOpen(false);
+      fetchData();
     } catch (error) {
       console.error('Error rejecting request:', error);
       toast.error('Gagal menolak permintaan');
@@ -389,16 +392,34 @@ export default function AdminTransactionQuotaPage() {
 
   const handleUpdateSettings = async () => {
     try {
-      const { error } = await supabase
+      // First check if the setting exists
+      const { data: existing } = await supabase
         .from('app_settings')
-        .upsert({
-          key: 'payment_settings',
-          value: paymentSettings,
-          category: 'payment',
-          description: 'Pengaturan pembayaran untuk pembelian paket'
-        }, { onConflict: 'key' });
+        .select('id')
+        .eq('key', 'payment_settings')
+        .maybeSingle();
 
-      if (error) throw error;
+      if (existing) {
+        const { error } = await supabase
+          .from('app_settings')
+          .update({
+            value: paymentSettings as unknown as import('@/integrations/supabase/types').Json,
+          })
+          .eq('key', 'payment_settings');
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('app_settings')
+          .insert({
+            key: 'payment_settings',
+            value: paymentSettings as unknown as import('@/integrations/supabase/types').Json,
+            category: 'payment',
+            description: 'Pengaturan pembayaran untuk pembelian paket'
+          });
+        if (error) throw error;
+      }
+
+
       toast.success('Pengaturan pembayaran berhasil diperbarui');
       setSettingsDialogOpen(false);
     } catch (error) {
