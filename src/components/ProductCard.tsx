@@ -56,7 +56,7 @@ export function ProductCard({ product, index = 0, showCategoryBadge = false }: P
     <div
       className={cn(
         "bg-card rounded-xl border border-border shadow-sm overflow-hidden relative group",
-        isAvailable ? "cursor-pointer card-hover" : "cursor-not-allowed"
+        "cursor-pointer card-hover"
       )}
     >
       {/* Unavailable Overlay */}
@@ -156,13 +156,9 @@ export function ProductCard({ product, index = 0, showCategoryBadge = false }: P
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
     >
-      {isAvailable ? (
-        <Link to={`/product/${product.id}`} className="block">
-          {CardContent}
-        </Link>
-      ) : (
-        CardContent
-      )}
+      <Link to={`/product/${product.id}`} className="block">
+        {CardContent}
+      </Link>
     </motion.div>
   );
 }

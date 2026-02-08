@@ -72,6 +72,7 @@ import AdminBackupPage from "./pages/admin/AdminBackupPage";
 // AdminScheduledBackupPage is now merged into AdminBackupPage
 import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
 import AdminVerifikatorWithdrawalsPage from "./pages/admin/AdminVerifikatorWithdrawalsPage";
+import AdminPOSPage from "./pages/admin/AdminPOSPage";
 import CourierHistoryPage from "./pages/courier/CourierHistoryPage";
 
 // Verifikator Pages
@@ -95,6 +96,9 @@ import MerchantVouchersPage from "./pages/merchant/MerchantVouchersPage";
 import MerchantScheduledPromoPage from "./pages/merchant/MerchantScheduledPromoPage";
 import MerchantVisitorStatsPage from "./pages/merchant/MerchantVisitorStatsPage";
 import MerchantRefundsPage from "./pages/merchant/MerchantRefundsPage";
+import MerchantPOSPage from "./pages/merchant/MerchantPOSPage";
+import MerchantPOSSubscribePage from "./pages/merchant/MerchantPOSSubscribePage";
+import MerchantPOSSettingsPage from "./pages/merchant/MerchantPOSSettingsPage";
 
 // Desa Pages
 import DesaDashboardPage from "./pages/desa/DesaDashboardPage";
@@ -368,6 +372,11 @@ const App = () => (
                   <AdminVerifikatorWithdrawalsPage />
                 </ProtectedRoute>
               } />
+              <Route path="/admin/pos" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminPOSPage />
+                </ProtectedRoute>
+              } />
 
               {/* Verifikator routes */}
               <Route path="/verifikator" element={
@@ -459,6 +468,21 @@ const App = () => (
               <Route path="/merchant/visitor-stats" element={
                 <ProtectedRoute allowedRoles={['merchant', 'admin']}>
                   <MerchantVisitorStatsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/merchant/pos" element={
+                <ProtectedRoute allowedRoles={['merchant', 'admin']}>
+                  <MerchantPOSPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/merchant/pos/subscribe" element={
+                <ProtectedRoute allowedRoles={['merchant', 'admin']}>
+                  <MerchantPOSSubscribePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/merchant/pos/settings" element={
+                <ProtectedRoute allowedRoles={['merchant', 'admin']}>
+                  <MerchantPOSSettingsPage />
                 </ProtectedRoute>
               } />
 

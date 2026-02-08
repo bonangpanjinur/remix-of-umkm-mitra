@@ -1268,6 +1268,247 @@ export type Database = {
           },
         ]
       }
+      pos_packages: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_months: number
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_months?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pos_settings: {
+        Row: {
+          created_at: string
+          font_size: string
+          id: string
+          invoice_footer: string | null
+          invoice_header: string | null
+          merchant_id: string
+          paper_size: string
+          show_address: boolean
+          show_logo: boolean
+          show_phone: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          font_size?: string
+          id?: string
+          invoice_footer?: string | null
+          invoice_header?: string | null
+          merchant_id: string
+          paper_size?: string
+          show_address?: boolean
+          show_logo?: boolean
+          show_phone?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          font_size?: string
+          id?: string
+          invoice_footer?: string | null
+          invoice_header?: string | null
+          merchant_id?: string
+          paper_size?: string
+          show_address?: boolean
+          show_logo?: boolean
+          show_phone?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_settings_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: true
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_settings_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: true
+            referencedRelation: "public_merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_subscriptions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          expired_at: string | null
+          id: string
+          is_trial: boolean
+          merchant_id: string
+          package_id: string | null
+          payment_amount: number
+          payment_proof_url: string | null
+          payment_status: string
+          rejection_reason: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          expired_at?: string | null
+          id?: string
+          is_trial?: boolean
+          merchant_id: string
+          package_id?: string | null
+          payment_amount?: number
+          payment_proof_url?: string | null
+          payment_status?: string
+          rejection_reason?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          expired_at?: string | null
+          id?: string
+          is_trial?: boolean
+          merchant_id?: string
+          package_id?: string | null
+          payment_amount?: number
+          payment_proof_url?: string | null
+          payment_status?: string
+          rejection_reason?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_subscriptions_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_subscriptions_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_subscriptions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "pos_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_transactions: {
+        Row: {
+          cashier_name: string | null
+          change_amount: number
+          created_at: string
+          customer_name: string | null
+          discount: number
+          id: string
+          items: Json
+          merchant_id: string
+          notes: string | null
+          payment_amount: number
+          payment_method: string
+          status: string
+          subtotal: number
+          tax: number
+          total: number
+          transaction_number: string
+        }
+        Insert: {
+          cashier_name?: string | null
+          change_amount?: number
+          created_at?: string
+          customer_name?: string | null
+          discount?: number
+          id?: string
+          items?: Json
+          merchant_id: string
+          notes?: string | null
+          payment_amount?: number
+          payment_method?: string
+          status?: string
+          subtotal?: number
+          tax?: number
+          total?: number
+          transaction_number: string
+        }
+        Update: {
+          cashier_name?: string | null
+          change_amount?: number
+          created_at?: string
+          customer_name?: string | null
+          discount?: number
+          id?: string
+          items?: Json
+          merchant_id?: string
+          notes?: string | null
+          payment_amount?: number
+          payment_method?: string
+          status?: string
+          subtotal?: number
+          tax?: number
+          total?: number
+          transaction_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_transactions_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_transactions_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "public_merchants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_images: {
         Row: {
           created_at: string
