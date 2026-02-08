@@ -1,10 +1,27 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Building, Store, ArrowRight, CheckCircle, Users, Shield } from 'lucide-react';
+import { Building, Store, Bike, ArrowRight, CheckCircle, Users, Shield } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { getSettingByKey } from '@/lib/adminApi';
 
 export default function RegisterPage() {
+  const [courierEnabled, setCourierEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    async function checkCourierRegistration() {
+      try {
+        const setting = await getSettingByKey('registration_courier');
+        const enabled = (setting?.value as { enabled?: boolean })?.enabled ?? true;
+        setCourierEnabled(enabled);
+      } catch {
+        setCourierEnabled(true);
+      }
+    }
+    checkCourierRegistration();
+  }, []);
+
   return (
     <div className="mobile-shell bg-background flex flex-col min-h-screen">
       <Header />
@@ -24,7 +41,7 @@ export default function RegisterPage() {
               Bergabung Bersama Kami
             </h1>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-              Daftarkan desa wisata atau usaha UMKM Anda dan raih lebih banyak pelanggan
+              Daftarkan desa wisata, usaha UMKM, atau jadi kurir desa
             </p>
           </motion.div>
 
@@ -103,6 +120,45 @@ export default function RegisterPage() {
                 </div>
               </Link>
             </motion.div>
+
+            {/* Courier Registration Card - Only show if enabled */}
+            {courierEnabled && (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <Link
+                  to="/register/courier"
+                  className="block bg-card rounded-2xl border border-border p-5 hover:border-primary/50 hover:shadow-lg transition-all group"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-xl bg-destructive/10 flex items-center justify-center flex-shrink-0 group-hover:bg-destructive/20 transition">
+                      <Bike className="h-7 w-7 text-destructive" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h2 className="font-bold text-lg text-foreground">Kurir/Ojek Desa</h2>
+                        <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-destructive group-hover:translate-x-1 transition-all" />
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1 mb-3">
+                        Antar pesanan dan bantu warga desa
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex items-center gap-1 text-xs bg-destructive/10 text-destructive px-2 py-1 rounded-full">
+                          <CheckCircle className="h-3 w-3" />
+                          Penghasilan Harian
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full">
+                          <Shield className="h-3 w-3" />
+                          Verifikasi Admin
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            )}
           </div>
 
           {/* Benefits Section */}
