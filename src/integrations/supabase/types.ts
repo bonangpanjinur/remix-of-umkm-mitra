@@ -2352,11 +2352,13 @@ export type Database = {
           location_lat: number | null
           location_lng: number | null
           name: string
+          province: string | null
           regency: string
           registered_at: string | null
           registration_status: string
           rejection_reason: string | null
           subdistrict: string | null
+          updated_at: string | null
         }
         Insert: {
           approved_at?: string | null
@@ -2373,11 +2375,13 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           name: string
+          province?: string | null
           regency: string
           registered_at?: string | null
           registration_status?: string
           rejection_reason?: string | null
           subdistrict?: string | null
+          updated_at?: string | null
         }
         Update: {
           approved_at?: string | null
@@ -2394,11 +2398,13 @@ export type Database = {
           location_lat?: number | null
           location_lng?: number | null
           name?: string
+          province?: string | null
           regency?: string
           registered_at?: string | null
           registration_status?: string
           rejection_reason?: string | null
           subdistrict?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
