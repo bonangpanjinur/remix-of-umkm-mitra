@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Receipt, ShoppingBag, Package, Truck, CheckCircle, XCircle, Clock, Star, X, RotateCcw, CreditCard } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Header } from '@/components/layout/Header';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,19 @@ export default function OrdersPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [activeTab, setActiveTab] = useState('all');
+
+  const activeStatuses = ['NEW', 'PENDING_PAYMENT', 'PENDING_CONFIRMATION', 'PROCESSING', 'PROCESSED', 'ASSIGNED', 'PICKED_UP', 'ON_DELIVERY', 'SENT', 'DELIVERED'];
+  const doneStatuses = ['DONE'];
+  const canceledStatuses = ['CANCELED', 'REFUNDED'];
+
+  const filteredOrders = orders.filter(order => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'active') return activeStatuses.includes(order.status);
+    if (activeTab === 'done') return doneStatuses.includes(order.status);
+    if (activeTab === 'canceled') return canceledStatuses.includes(order.status);
+    return true;
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -226,8 +240,24 @@ export default function OrdersPage() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-3">
-              {orders.map((order, index) => {
+            <>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="all">Semua</TabsTrigger>
+                  <TabsTrigger value="active">Aktif</TabsTrigger>
+                  <TabsTrigger value="done">Selesai</TabsTrigger>
+                  <TabsTrigger value="canceled">Batal</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {filteredOrders.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Tidak ada pesanan di kategori ini</p>
+                </div>
+              ) : (
+              <div className="space-y-3">
+                {filteredOrders.map((order, index) => {
                 const status = statusConfig[order.status] || statusConfig.NEW;
                 const StatusIcon = status.icon;
                 
@@ -351,6 +381,8 @@ export default function OrdersPage() {
                 );
               })}
             </div>
+              )}
+            </>
           )}
         </motion.div>
       </div>

@@ -1,6 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+let cachedFreeTierLimit: number | null = null;
+let cacheTs = 0;
+async function getFreeTierLimit(): Promise<number> {
+  if (cachedFreeTierLimit !== null && Date.now() - cacheTs < 300000) return cachedFreeTierLimit;
+  const { data } = await supabase.from('app_settings').select('value').eq('key', 'free_tier_quota').maybeSingle();
+  cachedFreeTierLimit = (data?.value as { limit?: number })?.limit ?? 100;
+  cacheTs = Date.now();
+  return cachedFreeTierLimit;
+}
+
 export interface MerchantQuotaStatus {
   merchantId: string;
   merchantName: string;
@@ -90,7 +100,7 @@ export function useMerchantQuota(merchantIds: string[]) {
           };
         } else {
           // Fallback to Free Tier
-          const freeLimit = 100;
+          const freeLimit = await getFreeTierLimit();
           const remaining = Math.max(0, freeLimit - currentUsage);
           
           status = {

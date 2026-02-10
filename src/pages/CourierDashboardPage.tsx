@@ -15,7 +15,9 @@ import {
   AlertCircle,
   Wallet,
   Camera,
-  History
+  History,
+  Banknote,
+  Volume2
 } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -69,6 +71,40 @@ export default function CourierDashboardPage() {
       navigate('/auth');
     }
   }, [user, authLoading]);
+
+  // Real-time notification for new assigned orders
+  useEffect(() => {
+    if (!courier?.id) return;
+    const channel = supabase
+      .channel('courier-new-orders')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'orders',
+        filter: `courier_id=eq.${courier.id}`,
+      }, (payload) => {
+        if (payload.new && (payload.new as { status: string }).status === 'ASSIGNED') {
+          // Play notification sound
+          try {
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 880;
+            osc.type = 'sine';
+            gain.gain.value = 0.3;
+            osc.start();
+            setTimeout(() => { osc.frequency.value = 1100; }, 150);
+            setTimeout(() => { osc.stop(); ctx.close(); }, 400);
+          } catch {}
+          toast({ title: '🚀 Pesanan Baru!', description: 'Anda mendapat tugas pengiriman baru' });
+          fetchCourierData();
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [courier?.id]);
 
   const fetchCourierData = async () => {
     if (!user) return;
@@ -343,6 +379,29 @@ export default function CourierDashboardPage() {
               <div>
                 <p className="font-medium">Pendapatan</p>
                 <p className="text-sm text-muted-foreground">Lihat riwayat & statistik</p>
+              </div>
+            </div>
+            <Navigation className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        </motion.div>
+
+        {/* Withdrawal Link */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}
+        >
+          <Link
+            to="/courier/withdrawal"
+            className="flex items-center justify-between p-4 bg-card rounded-xl border border-border hover:bg-secondary transition"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
+                <Banknote className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium">Penarikan Saldo</p>
+                <p className="text-sm text-muted-foreground">Tarik saldo ke rekening bank</p>
               </div>
             </div>
             <Navigation className="h-4 w-4 text-muted-foreground" />

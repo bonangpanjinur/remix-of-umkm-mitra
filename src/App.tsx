@@ -74,6 +74,7 @@ import AdminCategoriesPage from "./pages/admin/AdminCategoriesPage";
 import AdminVerifikatorWithdrawalsPage from "./pages/admin/AdminVerifikatorWithdrawalsPage";
 import AdminPOSPage from "./pages/admin/AdminPOSPage";
 import CourierHistoryPage from "./pages/courier/CourierHistoryPage";
+import CourierWithdrawalPage from "./pages/courier/CourierWithdrawalPage";
 
 // Verifikator Pages
 import VerifikatorDashboardPage from "./pages/verifikator/VerifikatorDashboardPage";
@@ -222,6 +223,11 @@ const App = () => (
               <Route path="/courier/history" element={
                 <ProtectedRoute allowedRoles={['courier', 'admin']}>
                   <CourierHistoryPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/courier/withdrawal" element={
+                <ProtectedRoute allowedRoles={['courier', 'admin']}>
+                  <CourierWithdrawalPage />
                 </ProtectedRoute>
               } />
               <Route path="/orders/:orderId/review" element={

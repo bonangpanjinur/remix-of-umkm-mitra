@@ -26,10 +26,20 @@ const villageImages: Record<string, string> = {
   '22222222-2222-2222-2222-222222222222': villageSukamaju,
 };
 
-const FREE_TIER_LIMIT = 100;
+let cachedFreeTierLimit: number | null = null;
+let cacheTs = 0;
+
+async function getFreeTierLimit(): Promise<number> {
+  if (cachedFreeTierLimit !== null && Date.now() - cacheTs < 300000) return cachedFreeTierLimit;
+  const { data } = await supabase.from('app_settings').select('value').eq('key', 'free_tier_quota').maybeSingle();
+  cachedFreeTierLimit = (data?.value as { limit?: number })?.limit ?? 100;
+  cacheTs = Date.now();
+  return cachedFreeTierLimit;
+}
 
 // Helper to get merchant IDs with active quota (subscriptions OR free tier)
 async function getMerchantsWithActiveQuota(): Promise<Set<string>> {
+  const FREE_TIER_LIMIT = await getFreeTierLimit();
   // Get all active merchants
   const { data: allMerchants } = await supabase
     .from('merchants')
@@ -104,6 +114,7 @@ export async function checkMerchantHasActiveQuota(merchantId: string): Promise<b
   }
 
   // Fallback: free tier - check monthly order count
+  const FREE_TIER_LIMIT = await getFreeTierLimit();
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);

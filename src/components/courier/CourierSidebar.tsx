@@ -4,7 +4,8 @@ import {
   Wallet, 
   ChevronLeft,
   Bike,
-  History
+  History,
+  Banknote
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +22,7 @@ export function CourierSidebar() {
     { label: 'Dashboard', href: '/courier', icon: <LayoutDashboard className="h-4 w-4" /> },
     { label: 'Riwayat Pengiriman', href: '/courier/history', icon: <History className="h-4 w-4" /> },
     { label: 'Pendapatan', href: '/courier/earnings', icon: <Wallet className="h-4 w-4" /> },
+    { label: 'Penarikan Saldo', href: '/courier/withdrawal', icon: <Banknote className="h-4 w-4" /> },
   ];
 
   return (

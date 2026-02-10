@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, ToggleLeft, Globe, CreditCard, AlertCircle, Truck, Percent, Plus, Trash2, ShieldCheck, Palette } from 'lucide-react';
+import { Save, ToggleLeft, Globe, CreditCard, AlertCircle, Truck, Percent, Plus, Trash2, ShieldCheck, Palette, Package } from 'lucide-react';
 import { ImageUpload } from '@/components/ui/ImageUpload';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { Button } from '@/components/ui/button';
@@ -95,6 +95,8 @@ export default function AdminSettingsPage() {
   const shippingZones = getSetting('shipping_zones')?.value as unknown as ShippingZonesSettings | undefined;
   const codSettings = getSetting('cod_settings')?.value as unknown as CODSettings | undefined;
   const adminPaymentInfo = getSetting('admin_payment_info')?.value as unknown as { bank_name: string; bank_account_number: string; bank_account_name: string; qris_image_url: string } | undefined;
+  const freeTierQuota = getSetting('free_tier_quota')?.value as unknown as { limit: number } | undefined;
+  const courierCommission = getSetting('courier_commission')?.value as unknown as { percent: number } | undefined;
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -187,6 +189,66 @@ export default function AdminSettingsPage() {
                         disabled={saving === 'registration_courier'}
                       />
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Free Tier Quota */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-5 w-5" />
+                      Kuota Gratis Merchant
+                    </CardTitle>
+                    <CardDescription>
+                      Jumlah kuota transaksi gratis per bulan untuk merchant tanpa paket berbayar
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <FreeTierQuotaForm
+                      initialLimit={freeTierQuota?.limit ?? 100}
+                      onSave={async (limit) => {
+                        setSaving('free_tier_quota');
+                        const success = await updateAppSetting('free_tier_quota', { limit });
+                        if (success) {
+                          toast.success('Kuota gratis berhasil disimpan');
+                          loadSettings();
+                        } else {
+                          toast.error('Gagal menyimpan');
+                        }
+                        setSaving(null);
+                      }}
+                      isSaving={saving === 'free_tier_quota'}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Courier Commission */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Truck className="h-5 w-5" />
+                      Komisi Kurir
+                    </CardTitle>
+                    <CardDescription>
+                      Persentase komisi kurir dari biaya pengiriman
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <CourierCommissionForm
+                      initialPercent={courierCommission?.percent ?? 80}
+                      onSave={async (percent) => {
+                        setSaving('courier_commission');
+                        const success = await updateAppSetting('courier_commission', { percent });
+                        if (success) {
+                          toast.success('Komisi kurir berhasil disimpan');
+                          loadSettings();
+                        } else {
+                          toast.error('Gagal menyimpan');
+                        }
+                        setSaving(null);
+                      }}
+                      isSaving={saving === 'courier_commission'}
+                    />
                   </CardContent>
                 </Card>
 
@@ -592,6 +654,36 @@ function AdminPaymentInfoForm({ initialValues, onSave, isSaving }: { initialValu
           placeholder="Upload gambar QRIS"
           maxSizeMB={3}
         />
+      </div>
+      <Button type="submit" disabled={isSaving}><Save className="h-4 w-4 mr-2" /> {isSaving ? 'Menyimpan...' : 'Simpan'}</Button>
+    </form>
+  );
+}
+
+function FreeTierQuotaForm({ initialLimit, onSave, isSaving }: { initialLimit: number; onSave: (limit: number) => Promise<void>; isSaving: boolean }) {
+  const [limit, setLimit] = useState(initialLimit.toString());
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(parseInt(limit) || 100); };
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Jumlah Kuota Gratis per Bulan</Label>
+        <Input type="number" value={limit} onChange={(e) => setLimit(e.target.value)} min={0} />
+        <p className="text-xs text-muted-foreground">Merchant tanpa paket berbayar akan mendapat kuota ini setiap bulan secara gratis</p>
+      </div>
+      <Button type="submit" disabled={isSaving}><Save className="h-4 w-4 mr-2" /> {isSaving ? 'Menyimpan...' : 'Simpan'}</Button>
+    </form>
+  );
+}
+
+function CourierCommissionForm({ initialPercent, onSave, isSaving }: { initialPercent: number; onSave: (percent: number) => Promise<void>; isSaving: boolean }) {
+  const [percent, setPercent] = useState(initialPercent.toString());
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(parseFloat(percent) || 80); };
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Persentase Komisi (%)</Label>
+        <Input type="number" step="0.1" value={percent} onChange={(e) => setPercent(e.target.value)} min={0} max={100} />
+        <p className="text-xs text-muted-foreground">Kurir akan mendapatkan {percent}% dari biaya ongkir setiap pengiriman</p>
       </div>
       <Button type="submit" disabled={isSaving}><Save className="h-4 w-4 mr-2" /> {isSaving ? 'Menyimpan...' : 'Simpan'}</Button>
     </form>

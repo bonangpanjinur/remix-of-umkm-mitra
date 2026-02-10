@@ -1,6 +1,24 @@
 import { supabase } from '@/integrations/supabase/client';
 
-const FREE_TIER_LIMIT = 100;
+let cachedFreeTierLimit: number | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getFreeTierLimit(): Promise<number> {
+  if (cachedFreeTierLimit !== null && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return cachedFreeTierLimit;
+  }
+  const { data } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'free_tier_quota')
+    .maybeSingle();
+  
+  const limit = (data?.value as { limit?: number })?.limit ?? 100;
+  cachedFreeTierLimit = limit;
+  cacheTimestamp = Date.now();
+  return limit;
+}
 
 export interface MerchantQuotaInfo {
   hasActiveSubscription: boolean;
@@ -18,6 +36,8 @@ export interface MerchantQuotaInfo {
  * This ensures consistent quota numbers across all pages.
  */
 export async function fetchMerchantQuotaInfo(merchantId: string): Promise<MerchantQuotaInfo> {
+  const FREE_TIER_LIMIT = await getFreeTierLimit();
+  
   // Get ALL active subscriptions for this merchant
   const { data: subscriptions } = await supabase
     .from('merchant_subscriptions')
@@ -54,6 +74,7 @@ export async function fetchMerchantQuotaInfo(merchantId: string): Promise<Mercha
   }
 
   // Free tier fallback
+  const freeTierLimit = await getFreeTierLimit();
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
@@ -68,8 +89,8 @@ export async function fetchMerchantQuotaInfo(merchantId: string): Promise<Mercha
 
   return {
     hasActiveSubscription: false,
-    remainingQuota: Math.max(0, FREE_TIER_LIMIT - currentUsage),
-    totalQuota: FREE_TIER_LIMIT,
+    remainingQuota: Math.max(0, freeTierLimit - currentUsage),
+    totalQuota: freeTierLimit,
     usedQuota: currentUsage,
     expiresAt: null,
     packageName: 'Free Tier',

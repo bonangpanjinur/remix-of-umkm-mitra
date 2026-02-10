@@ -306,11 +306,75 @@ export type Database = {
           },
         ]
       }
+      courier_withdrawal_requests: {
+        Row: {
+          account_holder: string
+          account_number: string
+          admin_notes: string | null
+          amount: number
+          bank_name: string
+          courier_id: string
+          created_at: string | null
+          id: string
+          processed_at: string | null
+          processed_by: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_holder: string
+          account_number: string
+          admin_notes?: string | null
+          amount: number
+          bank_name: string
+          courier_id: string
+          created_at?: string | null
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_holder?: string
+          account_number?: string
+          admin_notes?: string | null
+          amount?: number
+          bank_name?: string
+          courier_id?: string
+          created_at?: string | null
+          id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_withdrawal_requests_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "couriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_withdrawal_requests_courier_id_fkey"
+            columns: ["courier_id"]
+            isOneToOne: false
+            referencedRelation: "public_couriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       couriers: {
         Row: {
           address: string
           approved_at: string | null
           approved_by: string | null
+          available_balance: number | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
           city: string
           created_at: string
           current_lat: number | null
@@ -323,6 +387,7 @@ export type Database = {
           ktp_number: string
           last_location_update: string | null
           name: string
+          pending_balance: number | null
           phone: string
           photo_url: string
           province: string
@@ -331,6 +396,7 @@ export type Database = {
           rejection_reason: string | null
           status: string
           subdistrict: string
+          total_withdrawn: number | null
           updated_at: string
           user_id: string | null
           vehicle_image_url: string
@@ -342,6 +408,10 @@ export type Database = {
           address: string
           approved_at?: string | null
           approved_by?: string | null
+          available_balance?: number | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
           city: string
           created_at?: string
           current_lat?: number | null
@@ -354,6 +424,7 @@ export type Database = {
           ktp_number: string
           last_location_update?: string | null
           name: string
+          pending_balance?: number | null
           phone: string
           photo_url: string
           province: string
@@ -362,6 +433,7 @@ export type Database = {
           rejection_reason?: string | null
           status?: string
           subdistrict: string
+          total_withdrawn?: number | null
           updated_at?: string
           user_id?: string | null
           vehicle_image_url: string
@@ -373,6 +445,10 @@ export type Database = {
           address?: string
           approved_at?: string | null
           approved_by?: string | null
+          available_balance?: number | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
           city?: string
           created_at?: string
           current_lat?: number | null
@@ -385,6 +461,7 @@ export type Database = {
           ktp_number?: string
           last_location_update?: string | null
           name?: string
+          pending_balance?: number | null
           phone?: string
           photo_url?: string
           province?: string
@@ -393,6 +470,7 @@ export type Database = {
           rejection_reason?: string | null
           status?: string
           subdistrict?: string
+          total_withdrawn?: number | null
           updated_at?: string
           user_id?: string | null
           vehicle_image_url?: string

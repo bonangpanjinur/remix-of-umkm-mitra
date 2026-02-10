@@ -80,6 +80,14 @@ export default function CourierEarningsPage() {
 
       setCourierId(courier.id);
 
+      // Get commission rate from app_settings
+      const { data: commissionSetting } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'courier_commission')
+        .maybeSingle();
+      const commissionRate = ((commissionSetting?.value as { percent?: number })?.percent ?? 80) / 100;
+
       // Fetch all delivered orders
       const { data: orders } = await supabase
         .from('orders')
@@ -98,9 +106,8 @@ export default function CourierEarningsPage() {
 
       const completedOrders = allOrders.filter(o => o.status === 'DELIVERED' || o.status === 'DONE');
       
-      // Commission is typically 80% of shipping cost for courier
       const calculateEarnings = (orders: DeliveryHistory[]) => 
-        orders.reduce((sum, o) => sum + (o.shipping_cost * 0.8), 0);
+        orders.reduce((sum, o) => sum + (o.shipping_cost * commissionRate), 0);
 
       const todayOrders = completedOrders.filter(o => 
         o.delivered_at && new Date(o.delivered_at) >= todayStart
@@ -274,7 +281,7 @@ export default function CourierEarningsPage() {
 
 function DeliveryCard({ order }: { order: DeliveryHistory }) {
   const isCompleted = order.status === 'DELIVERED' || order.status === 'DONE';
-  const earnings = order.shipping_cost * 0.8;
+  const earnings = order.shipping_cost * 0.8; // Will be overridden by actual commission rate in parent
 
   return (
     <div className="bg-card rounded-xl p-4 border border-border">
