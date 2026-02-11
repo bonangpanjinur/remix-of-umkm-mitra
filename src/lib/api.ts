@@ -172,7 +172,7 @@ export async function fetchProducts(): Promise<Product[]> {
       isMerchantOpen = currentTime >= merchant.open_time && currentTime <= merchant.close_time;
     }
     
-    const isAvailable = hasQuota && isMerchantOpen;
+    const isAvailable = hasQuota && isMerchantOpen && p.is_active;
 
     // Get location - prefer merchant location, fallback to village location
     const locationLat = merchant?.location_lat 

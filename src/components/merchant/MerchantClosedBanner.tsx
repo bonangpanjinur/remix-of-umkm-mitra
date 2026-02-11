@@ -91,7 +91,7 @@ export function MerchantStatusBadge({
     return (
       <span className={`inline-flex items-center gap-1 bg-destructive/10 text-destructive rounded-full font-medium ${sizeClasses}`}>
         <span className="w-1.5 h-1.5 bg-destructive rounded-full" />
-        Tutup
+        Kuota Habis
       </span>
     );
   }

@@ -96,7 +96,6 @@ export default function MerchantProfilePage() {
           merchantData.close_time
         );
         const isMerchantOpen = merchantStatus.isCurrentlyOpen;
-        const isAvailable = quotaActive && isMerchantOpen;
 
         // Fetch products
         const { data: productsData } = await supabase
@@ -106,23 +105,27 @@ export default function MerchantProfilePage() {
           .eq('is_active', true)
           .order('created_at', { ascending: false });
 
-        const mappedProducts: Product[] = (productsData || []).map(p => ({
-          id: p.id,
-          merchantId: p.merchant_id,
-          merchantName: merchantData.name,
-          merchantVillage: merchantData.villages?.name || '',
-          name: p.name,
-          description: p.description || '',
-          price: p.price,
-          stock: p.stock,
-          image: p.image_url || '/placeholder.svg',
-          category: p.category as any,
-          isActive: p.is_active,
-          isPromo: p.is_promo,
-          isAvailable,
-          isMerchantOpen,
-          hasQuota: quotaActive,
-        }));
+        const mappedProducts: Product[] = (productsData || []).map(p => {
+          const isAvailable = quotaActive && isMerchantOpen && p.is_active;
+          
+          return {
+            id: p.id,
+            merchantId: p.merchant_id,
+            merchantName: merchantData.name,
+            merchantVillage: merchantData.villages?.name || '',
+            name: p.name,
+            description: p.description || '',
+            price: p.price,
+            stock: p.stock,
+            image: p.image_url || '/placeholder.svg',
+            category: p.category as any,
+            isActive: p.is_active,
+            isPromo: p.is_promo,
+            isAvailable,
+            isMerchantOpen,
+            hasQuota: quotaActive,
+          };
+        });
         setProducts(mappedProducts);
 
         // Fetch reviews
