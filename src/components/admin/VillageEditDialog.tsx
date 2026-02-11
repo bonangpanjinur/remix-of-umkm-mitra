@@ -42,7 +42,7 @@ interface VillageEditDialogProps {
     contact_phone: string | null;
     contact_email: string | null;
     is_active: boolean;
-    user_id?: string | null; // Added user_id to initialData
+    user_id?: string | null;
   };
   onSuccess: () => void;
 }
@@ -105,7 +105,7 @@ export function VillageEditDialog({
   const { data: profiles, isLoading: isLoadingProfiles } = useQuery({
     queryKey: ["profiles-for-selection", villageId],
     queryFn: async () => {
-      // Step 1: Ambil semua user yang memiliki role 'admin_desa'
+      // Step 1: Ambil semua user yang memiliki role 'admin_desa' dari tabel user_roles
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -114,9 +114,10 @@ export function VillageEditDialog({
       if (roleError) throw roleError;
       if (!roleData || roleData.length === 0) return [];
 
-      const adminDesaIds = roleData.map(r => r.user_id);
+      // Gunakan Set untuk memastikan user_id unik (karena satu user bisa punya banyak role)
+      const adminDesaIds = Array.from(new Set(roleData.map(r => r.user_id)));
 
-      // Step 2: Ambil semua user yang sudah terhubung dengan desa lain (di tabel villages)
+      // Step 2: Ambil semua user yang sudah terhubung dengan desa lain di tabel villages
       const { data: linkedVillages, error: linkedError } = await supabase
         .from('villages')
         .select('user_id')
@@ -127,7 +128,7 @@ export function VillageEditDialog({
       
       const linkedUserIds = new Set(linkedVillages?.map(v => v.user_id) || []);
 
-      // Step 3: Filter adminDesaIds yang belum terhubung (atau terhubung dengan desa ini)
+      // Step 3: Filter adminDesaIds yang belum terhubung ke desa lain
       const availableIds = adminDesaIds.filter(id => !linkedUserIds.has(id));
 
       if (availableIds.length === 0) return [];
@@ -170,7 +171,6 @@ export function VillageEditDialog({
 
     resolveAddressCodes(initialData.province, initialData.regency, initialData.district, initialData.subdistrict);
     
-    // Set selectedUserId from initialData.user_id if available
     if (initialData.user_id) {
       setSelectedUserId(initialData.user_id);
       loadOwnerProfile(initialData.user_id);
@@ -298,11 +298,9 @@ export function VillageEditDialog({
   const handleLocationChange = async (loc: { lat: number; lng: number }) => {
     setFormData(prev => ({ ...prev, location_lat: loc.lat, location_lng: loc.lng }));
     
-    // Reverse geocode to fill address
     try {
       const result = await reverseGeocode(loc.lat, loc.lng);
       if (result) {
-        // Try to match to dropdown data
         const provList = provincesList.length > 0 ? provincesList : await fetchProvinces();
         if (provincesList.length === 0) setProvincesList(provList);
         
@@ -364,18 +362,17 @@ export function VillageEditDialog({
           contact_phone: formData.contact_phone || null,
           contact_email: formData.contact_email || null,
           is_active: formData.is_active,
-          user_id: newOwnerId, // This is the crucial part for the relation
+          user_id: newOwnerId,
           updated_at: new Date().toISOString(),
         })
         .eq('id', villageId);
 
       if (villageError) throw villageError;
 
-      // 2. Handle user_villages assignment (Optional, keeping for backward compatibility if needed)
+      // 2. Handle user_villages assignment untuk sinkronisasi
       const currentOwnerId = initialData.user_id;
 
       if (newOwnerId !== currentOwnerId) {
-        // Hapus link lama jika ada
         if (currentOwnerId) {
           await supabase
             .from('user_villages')
@@ -383,7 +380,6 @@ export function VillageEditDialog({
             .eq('village_id', villageId);
         }
 
-        // Tambah link baru jika dipilih
         if (newOwnerId) {
           await supabase
             .from('user_villages')
@@ -392,26 +388,11 @@ export function VillageEditDialog({
               village_id: villageId,
               role: 'admin',
             }, { onConflict: 'user_id,village_id' });
-
-          // Pastikan user memiliki role admin_desa
-          const { data: existingRole } = await supabase
-            .from('user_roles')
-            .select('id')
-            .eq('user_id', newOwnerId)
-            .eq('role', 'admin_desa')
-            .maybeSingle();
-
-          if (!existingRole) {
-            await supabase
-              .from('user_roles')
-              .insert({ user_id: newOwnerId, role: 'admin_desa' });
-          }
         }
       }
 
       toast.success('Data desa berhasil diperbarui');
       
-      // Invalidate queries untuk refresh data di UI
       queryClient.invalidateQueries({ queryKey: ["admin-villages"] });
       queryClient.invalidateQueries({ queryKey: ["profiles-for-selection"] });
       
@@ -433,7 +414,6 @@ export function VillageEditDialog({
         </DialogHeader>
 
         <div className="space-y-6 py-2">
-          {/* Basic Info + Image */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-4">
               <div>
@@ -469,7 +449,6 @@ export function VillageEditDialog({
             </div>
           </div>
 
-          {/* Owner (User Admin Desa) */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
               <UserCheck className="h-4 w-4" />
@@ -511,7 +490,6 @@ export function VillageEditDialog({
             </div>
           </div>
 
-          {/* Map + Auto-fill */}
           <div className="border-t pt-4">
             <Label className="flex items-center gap-2 mb-2">
               <MapPin className="h-4 w-4" />
@@ -523,7 +501,6 @@ export function VillageEditDialog({
             />
           </div>
 
-          {/* Address Dropdowns */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium mb-3">Alamat Lengkap</p>
             {loadingAddr && <p className="text-xs text-muted-foreground animate-pulse mb-2">Memuat data alamat...</p>}
@@ -575,7 +552,6 @@ export function VillageEditDialog({
             </div>
           </div>
 
-          {/* Contact Info */}
           <div className="border-t pt-4">
             <p className="text-sm font-medium mb-3">Informasi Kontak</p>
             <div className="space-y-3">
