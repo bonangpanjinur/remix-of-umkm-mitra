@@ -20,6 +20,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogContent as AlertDialogContentUI,
 } from "@/components/ui/alert-dialog";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -43,6 +44,7 @@ interface VillageRow {
   registration_status: string;
   is_active: boolean;
   registered_at: string | null;
+  user_id: string | null; // Added user_id from villages table
   owner_name: string | null;
   owner_phone: string | null;
 }
@@ -60,46 +62,36 @@ export default function AdminVillagesPage() {
   const fetchVillagesData = async () => {
     try {
       setLoading(true);
-      // Fetch villages
+      // Fetch villages including user_id
       const { data: villagesData, error } = await supabase
         .from('villages')
-        .select('id, name, regency, district, subdistrict, description, image_url, location_lat, location_lng, contact_name, contact_phone, contact_email, registration_status, is_active, registered_at')
+        .select('id, name, regency, district, subdistrict, description, image_url, location_lat, location_lng, contact_name, contact_phone, contact_email, registration_status, is_active, registered_at, user_id')
         .order('registered_at', { ascending: false });
 
       if (error) throw error;
 
-      // Fetch user_villages to get owner info
-      const villageIds = (villagesData || []).map(v => v.id);
-      let ownerMap: Record<string, { full_name: string | null; phone: string | null }> = {};
+      // Fetch profiles for all user_ids in villages
+      const userIds = (villagesData || [])
+        .map(v => v.user_id)
+        .filter((id): id is string => id !== null);
       
-      if (villageIds.length > 0) {
-        const { data: userVillages } = await supabase
-          .from('user_villages')
-          .select('village_id, user_id')
-          .in('village_id', villageIds);
+      let profileMap = new Map<string, { full_name: string | null; phone: string | null }>();
+      
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, phone')
+          .in('user_id', userIds);
         
-        if (userVillages && userVillages.length > 0) {
-          const userIds = userVillages.map(uv => uv.user_id);
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('user_id, full_name, phone')
-            .in('user_id', userIds);
-          
-          const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
-          for (const uv of userVillages) {
-            const profile = profileMap.get(uv.user_id);
-            ownerMap[uv.village_id] = {
-              full_name: profile?.full_name || null,
-              phone: profile?.phone || null,
-            };
-          }
+        if (profiles) {
+          profiles.forEach(p => profileMap.set(p.user_id, { full_name: p.full_name, phone: p.phone }));
         }
       }
 
       const enriched: VillageRow[] = (villagesData || []).map(v => ({
         ...v,
-        owner_name: ownerMap[v.id]?.full_name || null,
-        owner_phone: ownerMap[v.id]?.phone || null,
+        owner_name: v.user_id ? profileMap.get(v.user_id)?.full_name || null : null,
+        owner_phone: v.user_id ? profileMap.get(v.user_id)?.phone || null : null,
       }));
       
       setVillages(enriched);
@@ -306,6 +298,7 @@ export default function AdminVillagesPage() {
             contact_phone: selectedVillage.contact_phone,
             contact_email: selectedVillage.contact_email,
             is_active: selectedVillage.is_active,
+            user_id: selectedVillage.user_id, // Pass user_id to EditDialog
           }}
           onSuccess={fetchVillagesData}
         />
