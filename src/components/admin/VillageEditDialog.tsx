@@ -99,17 +99,45 @@ export function VillageEditDialog({
   const [districtsList, setDistrictsList] = useState<Region[]>([]);
   const [subdistrictsList, setSubdistrictsList] = useState<Region[]>([]);
 
-  // 1. Fetch data profil untuk pilihan pengelola menggunakan useQuery
+  // 1. Fetch data profil untuk pilihan pengelola dengan filter role dan ketersediaan
   const { data: profiles, isLoading: isLoadingProfiles } = useQuery({
-    queryKey: ["profiles-for-selection"],
+    queryKey: ["profiles-for-selection", villageId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Step 1: Ambil semua user yang memiliki role 'admin_desa'
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin_desa');
+      
+      if (roleError) throw roleError;
+      if (!roleData || roleData.length === 0) return [];
+
+      const adminDesaIds = roleData.map(r => r.user_id);
+
+      // Step 2: Ambil semua user yang sudah terhubung dengan desa lain
+      const { data: linkedData, error: linkedError } = await supabase
+        .from('user_villages')
+        .select('user_id')
+        .neq('village_id', villageId); // Kecuali desa ini sendiri
+
+      if (linkedError) throw linkedError;
+      
+      const linkedUserIds = new Set(linkedData?.map(l => l.user_id) || []);
+
+      // Step 3: Filter adminDesaIds yang belum terhubung (atau terhubung dengan desa ini)
+      const availableIds = adminDesaIds.filter(id => !linkedUserIds.has(id));
+
+      if (availableIds.length === 0) return [];
+
+      // Step 4: Ambil detail profil untuk ID yang tersedia
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("user_id, full_name, email, phone")
+        .in("user_id", availableIds)
         .order("full_name", { ascending: true });
 
-      if (error) throw error;
-      return data;
+      if (profileError) throw profileError;
+      return profileData;
     },
     enabled: open,
   });
@@ -461,7 +489,7 @@ export function VillageEditDialog({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Pilih user yang akan mengelola desa wisata ini.
+                Menampilkan user dengan role admin desa yang belum terhubung ke desa lain.
               </p>
             </div>
           </div>
