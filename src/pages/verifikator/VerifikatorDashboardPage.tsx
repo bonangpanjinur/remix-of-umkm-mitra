@@ -253,6 +253,7 @@ export default function VerifikatorDashboardPage() {
         .from('trade_groups')
         .insert({
           name: groupName.trim(),
+          code: referralCode.toUpperCase(),
           description: groupDescription.trim() || null,
           monthly_fee: parseInt(monthlyFee) || 10000,
           verifikator_id: user?.id,
