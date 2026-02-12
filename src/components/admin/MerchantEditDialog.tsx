@@ -140,6 +140,7 @@ export function MerchantEditDialog({
   const [isValidatingCode, setIsValidatingCode] = useState(false);
   const [tradeGroupName, setTradeGroupName] = useState<string | null>(null);
   const [isCodeValid, setIsCodeValid] = useState<boolean | null>(null);
+  const [debouncedCode, setDebouncedCode] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -227,6 +228,23 @@ export function MerchantEditDialog({
     loadOwnerAndUsers(initialData.user_id);
     resolveAddressCodes(initialData.province, initialData.city, initialData.district, initialData.subdistrict);
   }, [open, initialData]);
+
+  // Debounce effect for verifikator code
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedCode(formData.verifikator_code);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData.verifikator_code]);
+
+  useEffect(() => {
+    if (debouncedCode) {
+      validateVerifikatorCode(debouncedCode);
+    } else {
+      setTradeGroupName(null);
+      setIsCodeValid(null);
+    }
+  }, [debouncedCode]);
 
   // --- Owner / User logic ---
   const validateVerifikatorCode = async (code: string) => {
@@ -673,7 +691,7 @@ export function MerchantEditDialog({
             </h3>
             <div className="space-y-2">
               <Label>Kode Verifikator / Kelompok Dagang</Label>
-              <div className="flex gap-2">
+              <div className="relative">
                 <Input
                   value={formData.verifikator_code}
                   onChange={(e) => {
@@ -685,17 +703,17 @@ export function MerchantEditDialog({
                     }
                   }}
                   placeholder="Masukkan kode verifikator"
-                  className={isCodeValid === false ? "border-destructive" : isCodeValid === true ? "border-success" : ""}
+                  className={isCodeValid === false ? "border-destructive pr-10" : isCodeValid === true ? "border-success pr-10" : "pr-10"}
                 />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => validateVerifikatorCode(formData.verifikator_code)}
-                  disabled={isValidatingCode || !formData.verifikator_code}
-                >
-                  {isValidatingCode ? "Mengecek..." : "Cek Kode"}
-                </Button>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {isValidatingCode ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  ) : isCodeValid === true ? (
+                    <Check className="h-4 w-4 text-success" />
+                  ) : isCodeValid === false ? (
+                    <X className="h-4 w-4 text-destructive" />
+                  ) : null}
+                </div>
               </div>
               
               {isCodeValid === true && tradeGroupName && (

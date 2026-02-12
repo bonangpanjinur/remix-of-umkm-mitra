@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Save, Plus } from 'lucide-react';
+import { Clock, Save, Plus, Check, X, Shield } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -77,6 +77,12 @@ export function MerchantAddDialog({
   const [availableUsers, setAvailableUsers] = useState<MerchantUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
+  // Verifikator validation state
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  const [tradeGroupName, setTradeGroupName] = useState<string | null>(null);
+  const [isCodeValid, setIsCodeValid] = useState<boolean | null>(null);
+  const [debouncedCode, setDebouncedCode] = useState('');
+
   const [formData, setFormData] = useState({
     name: '',
     user_id: '',
@@ -104,6 +110,7 @@ export function MerchantAddDialog({
     image_url: '',
     location_lat: null as number | null,
     location_lng: null as number | null,
+    verifikator_code: '',
   });
 
   // Load provinces and available users on dialog open
@@ -113,6 +120,56 @@ export function MerchantAddDialog({
       loadAvailableUsers();
     }
   }, [open]);
+
+  // Debounce effect for verifikator code
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedCode(formData.verifikator_code);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData.verifikator_code]);
+
+  useEffect(() => {
+    if (debouncedCode) {
+      validateVerifikatorCode(debouncedCode);
+    } else {
+      setTradeGroupName(null);
+      setIsCodeValid(null);
+    }
+  }, [debouncedCode]);
+
+  const validateVerifikatorCode = async (code: string) => {
+    if (!code) {
+      setTradeGroupName(null);
+      setIsCodeValid(null);
+      return;
+    }
+
+    setIsValidatingCode(true);
+    try {
+      const { data, error } = await supabase
+        .from('verifikator_codes')
+        .select('trade_group')
+        .eq('code', code)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setTradeGroupName(data.trade_group);
+        setIsCodeValid(true);
+      } else {
+        setTradeGroupName(null);
+        setIsCodeValid(false);
+      }
+    } catch (error) {
+      console.error('Error validating code:', error);
+      setIsCodeValid(false);
+    } finally {
+      setIsValidatingCode(false);
+    }
+  };
 
   const loadAvailableUsers = async () => {
     setLoadingUsers(true);
@@ -268,6 +325,11 @@ export function MerchantAddDialog({
       return;
     }
 
+    if (formData.verifikator_code && isCodeValid === false) {
+      toast.error('Kode verifikator tidak valid. Silakan cek kembali atau kosongkan.');
+      return;
+    }
+
     if (!formData.phone.trim()) {
       toast.error('Nomor telepon wajib diisi');
       return;
@@ -322,6 +384,8 @@ export function MerchantAddDialog({
           image_url: formData.image_url || null,
           location_lat: formData.location_lat,
           location_lng: formData.location_lng,
+          verifikator_code: formData.verifikator_code || null,
+          trade_group: tradeGroupName || null,
         });
 
       if (error) throw error;
@@ -358,7 +422,10 @@ export function MerchantAddDialog({
         image_url: '',
         location_lat: null,
         location_lng: null,
+        verifikator_code: '',
       });
+      setTradeGroupName(null);
+      setIsCodeValid(null);
     } catch (error) {
       console.error('Error adding merchant:', error);
       toast.error('Gagal menambahkan merchant');
@@ -622,6 +689,59 @@ export function MerchantAddDialog({
                 value={formData.location_lat && formData.location_lng ? { lat: formData.location_lat, lng: formData.location_lng } : null}
                 onChange={(loc) => setFormData({ ...formData, location_lat: loc.lat, location_lng: loc.lng })}
               />
+            </div>
+          </div>
+
+          {/* Verifikator Code */}
+          <div className="border-b pb-4">
+            <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Verifikator
+            </h3>
+            <div className="space-y-2">
+              <Label>Kode Verifikator / Kelompok Dagang</Label>
+              <div className="relative">
+                <Input
+                  value={formData.verifikator_code}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...formData, verifikator_code: val });
+                    if (!val) {
+                      setIsCodeValid(null);
+                      setTradeGroupName(null);
+                    }
+                  }}
+                  placeholder="Masukkan kode verifikator"
+                  className={isCodeValid === false ? "border-destructive pr-10" : isCodeValid === true ? "border-success pr-10" : "pr-10"}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {isValidatingCode ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  ) : isCodeValid === true ? (
+                    <Check className="h-4 w-4 text-success" />
+                  ) : isCodeValid === false ? (
+                    <X className="h-4 w-4 text-destructive" />
+                  ) : null}
+                </div>
+              </div>
+              
+              {isCodeValid === true && tradeGroupName && (
+                <p className="text-xs text-success font-medium flex items-center gap-1">
+                  <Check className="h-3 w-3" />
+                  Terhubung ke: {tradeGroupName}
+                </p>
+              )}
+              
+              {isCodeValid === false && (
+                <p className="text-xs text-destructive font-medium flex items-center gap-1">
+                  <X className="h-3 w-3" />
+                  Kode tidak valid atau tidak aktif
+                </p>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                Pastikan kode valid untuk menghubungkan merchant dengan kelompok dagang yang tepat
+              </p>
             </div>
           </div>
 
