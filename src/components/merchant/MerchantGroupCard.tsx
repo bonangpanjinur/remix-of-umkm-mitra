@@ -52,7 +52,7 @@ export const MerchantGroupCard = () => {
   const checkCurrentMembership = async () => {
     try {
       setInitialLoading(true);
-      // 1. Ambil data merchant untuk cek verifikator_id dan group_id
+      // 1. Ambil data merchant untuk cek verifikator_id, group_id, dan verifikator_code
       const { data: merchant, error: merchantError } = await supabase
         .from('merchants')
         .select('id, verifikator_id, group_id, verifikator_code, trade_group')
@@ -64,23 +64,42 @@ export const MerchantGroupCard = () => {
         return;
       }
 
-      if (merchant && (merchant.verifikator_id || merchant.group_id)) {
+      // Merchant dianggap bergabung jika memiliki verifikator_id, group_id, ATAU verifikator_code
+      if (merchant && (merchant.verifikator_id || merchant.group_id || merchant.verifikator_code)) {
         setIsJoined(true);
         setCurrentMerchantData(merchant);
 
-        // 2. Ambil detail verifikator jika ada
-        if (merchant.verifikator_id) {
+        let vId = merchant.verifikator_id;
+        let vCode = merchant.verifikator_code;
+        let tGroup = merchant.trade_group;
+
+        // Jika verifikator_id belum ada tapi ada verifikator_code, coba cari verifikator_id
+        if (!vId && vCode) {
+          const { data: codeData } = await supabase
+            .from('verifikator_codes')
+            .select('verifikator_id, trade_group')
+            .eq('code', vCode)
+            .maybeSingle();
+          
+          if (codeData) {
+            vId = codeData.verifikator_id;
+            if (!tGroup) tGroup = codeData.trade_group;
+          }
+        }
+
+        // 2. Ambil detail verifikator jika ID ditemukan
+        if (vId) {
           const { data: verifikatorData } = await supabase
             .from('profiles')
             .select('id, full_name, phone, address')
-            .eq('id', merchant.verifikator_id)
+            .eq('id', vId)
             .maybeSingle();
 
           if (verifikatorData) {
             setCurrentVerifikator({
               ...verifikatorData,
-              business_name: merchant.trade_group, // Gunakan trade_group dari merchant sebagai fallback business_name
-              referral_code: merchant.verifikator_code,
+              business_name: tGroup || "Kelompok Dagang",
+              referral_code: vCode,
               email: null
             });
           }
@@ -102,6 +121,7 @@ export const MerchantGroupCard = () => {
         setIsJoined(false);
         setCurrentVerifikator(null);
         setCurrentGroup(null);
+        setCurrentMerchantData(null);
       }
     } catch (error) {
       console.error('Error checking membership:', error);
@@ -123,7 +143,7 @@ export const MerchantGroupCard = () => {
 
     setLoading(true);
     try {
-      // Cari di tabel verifikator_codes (menggunakan ilike untuk ketahanan ekstra)
+      // Cari di tabel verifikator_codes
       const { data: codeData, error: codeError } = await supabase
         .from('verifikator_codes')
         .select('id, code, trade_group, verifikator_id, description')
