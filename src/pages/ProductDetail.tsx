@@ -58,6 +58,11 @@ export default function ProductDetail() {
         setProduct(productData);
         
         if (productData) {
+          // Increment product view count
+          supabase.rpc('increment_product_view', { product_id: id }).then(({ error }) => {
+            if (error) console.error('Error incrementing view count:', error);
+          });
+          
           // Fetch merchant with operating hours
           const { data: merchantData } = await supabase
             .from('merchants')

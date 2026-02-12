@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ImageUpload } from '@/components/ui/ImageUpload';
+import { ProductVariantManager } from '@/components/merchant/ProductVariantManager';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -525,6 +526,15 @@ export default function MerchantProductsPage() {
                 </div>
               </div>
             </div>
+            
+            {editingProduct && (
+              <div className="border-t pt-4">
+                <ProductVariantManager 
+                  productId={editingProduct.id} 
+                  basePrice={parseInt(form.price) || 0} 
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t mt-2">

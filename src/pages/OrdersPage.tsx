@@ -24,6 +24,7 @@ interface Order {
   merchant_id?: string;
   items_count?: number;
   courier_id?: string | null;
+  has_review?: boolean;
 }
 
 const statusConfig: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -90,6 +91,7 @@ export default function OrdersPage() {
           delivery_type,
           courier_id,
           merchant_id,
+          has_review,
           merchants (
             name
           ),
@@ -112,6 +114,7 @@ export default function OrdersPage() {
         merchant_id: order.merchant_id,
         merchant_name: order.merchants?.name || 'Toko',
         items_count: order.order_items?.length || 0,
+        has_review: order.has_review || false,
       }));
 
       setOrders(formattedOrders);
@@ -349,16 +352,30 @@ export default function OrdersPage() {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              className="h-8 px-2 text-[10px]"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openRefundDialog(order);
                               }}
+                              className="h-8 px-2 text-[10px]"
                             >
                               <RotateCcw className="h-3 w-3 mr-1" />
                               Refund
                             </Button>
                           </div>
+                        )}
+                        {order.status === 'DONE' && !order.has_review && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            className="h-8 px-2 text-[10px] border-primary text-primary hover:bg-primary/5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/reviews/${order.id}`);
+                            }}
+                          >
+                            <Star className="h-3 w-3 mr-1" />
+                            Beri Ulasan
+                          </Button>
                         )}
                         {order.status === 'DONE' && (
                           <Button 

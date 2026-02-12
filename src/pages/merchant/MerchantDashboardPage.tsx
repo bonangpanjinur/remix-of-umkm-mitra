@@ -9,6 +9,7 @@ import { StatsCard } from '@/components/admin/StatsCard';
 import { SalesAreaChart, OrdersBarChart } from '@/components/admin/SalesChart';
 import { QuickStats } from '@/components/merchant/QuickStats';
 import { StockAlerts } from '@/components/merchant/StockAlerts';
+import { CustomerReviews } from '@/components/merchant/CustomerReviews';
 import { OrderStatusManager } from '@/components/merchant/OrderStatusManager';
 import { QuotaStatusCard } from '@/components/merchant/QuotaStatusCard';
 import { QuotaAlertBanner } from '@/components/merchant/QuotaAlertBanner';
@@ -258,14 +259,21 @@ export default function MerchantDashboardPage() {
             </div>
           </div>
 
-          {/* Stock Alerts - Limited height if possible */}
-          <div className="bg-card rounded-xl border border-border p-4">
-            <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-warning" />
-              Peringatan Stok
-            </h4>
-            <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-              <StockAlerts merchantId={merchant.id} />
+          {/* Stock Alerts and Recent Reviews */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-card rounded-xl border border-border p-4">
+              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-warning" />
+                Peringatan Stok
+              </h4>
+              <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <StockAlerts merchantId={merchant.id} />
+              </div>
+            </div>
+            <div className="bg-card rounded-xl border border-border p-1 overflow-hidden">
+              <div className="max-h-[465px] overflow-y-auto custom-scrollbar">
+                <CustomerReviews merchantId={merchant.id} />
+              </div>
             </div>
           </div>
         </TabsContent>
