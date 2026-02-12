@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Users, Search, CheckCircle, Store, AlertCircle, RefreshCw, ShieldCheck } from "lucide-react";
-import { useToast } from "../../hooks/use-toast";
-import { supabase } from "../../integrations/supabase/client";
-import { useAuth } from "../../contexts/AuthContext";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { Skeleton } from "../ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface VerifikatorInfo {
   id: string;
@@ -55,7 +55,7 @@ export const MerchantGroupCard = () => {
         return;
       }
 
-      // 2. Cek apakah verifikator_id ada (Terlepas dari datanya bisa diambil atau tidak)
+      // 2. Cek apakah verifikator_id ada
       if (profile?.verifikator_id) {
         setIsJoined(true);
         setVerifikatorId(profile.verifikator_id);
@@ -69,9 +69,8 @@ export const MerchantGroupCard = () => {
           .single();
 
         if (verifikatorError) {
-          console.error('Gagal mengambil detail verifikator (mungkin RLS):', verifikatorError);
-          // Kita tidak set isJoined jadi false, karena secara teknis dia SUDAH join.
-          // Kita biarkan currentVerifikator null, nanti UI akan handle state "Joined tapi no info".
+          console.error('Gagal mengambil detail verifikator (mungkin batasan akses):', verifikatorError);
+          // Tetap tandai sebagai joined meskipun detail tidak bisa diambil
         } else {
           console.log("Detail verifikator ditemukan:", verifikatorData);
           setCurrentVerifikator(verifikatorData);
@@ -192,7 +191,6 @@ export const MerchantGroupCard = () => {
   }
 
   // --- TAMPILAN SUDAH BERGABUNG ---
-  // Kita cek flag isJoined. Jika true, JANGAN PERNAH tampilkan form gabung.
   if (isJoined) {
     return (
       <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 shadow-sm relative overflow-hidden">
@@ -265,7 +263,7 @@ export const MerchantGroupCard = () => {
               </div>
             </div>
           ) : (
-            // Jika detail GAGAL diambil tapi ID ada
+            // Jika detail GAGAL diambil tapi ID ada (tetap anggap sudah join)
             <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
               <div className="flex gap-3">
                 <AlertCircle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
@@ -273,10 +271,7 @@ export const MerchantGroupCard = () => {
                   <h4 className="font-semibold text-yellow-800">Data Verifikator Tidak Tampil</h4>
                   <p className="text-sm text-yellow-700 mt-1">
                     Anda sudah terdaftar secara sistem (ID Verifikator: <span className="font-mono text-xs">{verifikatorId}</span>), 
-                    namun profil lengkap verifikator belum dapat dimuat saat ini.
-                  </p>
-                  <p className="text-xs text-yellow-600 mt-2">
-                    Hal ini tidak mempengaruhi status keanggotaan atau transaksi Anda.
+                    namun profil lengkap verifikator belum dapat dimuat.
                   </p>
                 </div>
               </div>
