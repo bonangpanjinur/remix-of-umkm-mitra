@@ -61,12 +61,13 @@ export function MerchantGroupCard() {
       const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       const generatedCode = `G-${randomCode}`;
 
-      // Insert kelompok dagang baru dengan menyertakan 'code'
+      // Insert kelompok dagang baru dengan menyertakan 'code' dan 'verifikator_id'
       const { data: newGroup, error: groupError } = await supabase
         .from('trade_groups')
         .insert({
           name: groupName,
-          code: generatedCode, // <- Ini perbaikan utamanya: mengisi kolom code
+          code: generatedCode,
+          verifikator_id: user.id, // <- Tambahkan ini agar lolos RLS dan merchant jadi pemilik grup
         })
         .select()
         .single();
