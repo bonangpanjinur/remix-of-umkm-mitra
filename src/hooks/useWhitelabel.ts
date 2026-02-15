@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { setBaseUrl } from '@/lib/addressApi';
 
 interface WhitelabelSettings {
   siteName: string;
@@ -75,6 +76,12 @@ export function useWhitelabelProvider() {
           }
           if (item.category === 'pwa' && item.key === 'pwa_config') {
             newSettings.pwa = item.value as any;
+          }
+          if (item.key === 'address_api' && item.value) {
+            const addressApi = item.value as { provider: string; base_url: string };
+            if (addressApi.base_url) {
+              setBaseUrl(addressApi.base_url);
+            }
           }
         });
         setSettings(newSettings);

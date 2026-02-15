@@ -67,21 +67,78 @@ export function AddressDropdowns({
   // Load dependent data when codes change (for edit mode)
   useEffect(() => {
     if (provinceCode && provinces.length > 0) {
+      const province = provinces.find(p => p.code === provinceCode);
+      if (province && province.name !== provinceName) {
+        onChange({
+          provinceCode,
+          provinceName: province.name,
+          regencyCode,
+          regencyName,
+          districtCode,
+          districtName,
+          villageCode,
+          villageName,
+        });
+      }
       loadRegencies(provinceCode);
     }
   }, [provinceCode, provinces.length]);
 
   useEffect(() => {
     if (regencyCode && regencies.length > 0) {
+      const regency = regencies.find(r => r.code === regencyCode);
+      if (regency && regency.name !== regencyName) {
+        onChange({
+          provinceCode,
+          provinceName,
+          regencyCode,
+          regencyName: regency.name,
+          districtCode,
+          districtName,
+          villageCode,
+          villageName,
+        });
+      }
       loadDistricts(regencyCode);
     }
   }, [regencyCode, regencies.length]);
 
   useEffect(() => {
     if (districtCode && districts.length > 0) {
+      const district = districts.find(d => d.code === districtCode);
+      if (district && district.name !== districtName) {
+        onChange({
+          provinceCode,
+          provinceName,
+          regencyCode,
+          regencyName,
+          districtCode,
+          districtName: district.name,
+          villageCode,
+          villageName,
+        });
+      }
       loadVillages(districtCode);
     }
   }, [districtCode, districts.length]);
+
+  useEffect(() => {
+    if (villageCode && villages.length > 0) {
+      const village = villages.find(v => v.code === villageCode);
+      if (village && village.name !== villageName) {
+        onChange({
+          provinceCode,
+          provinceName,
+          regencyCode,
+          regencyName,
+          districtCode,
+          districtName,
+          villageCode,
+          villageName: village.name,
+        });
+      }
+    }
+  }, [villageCode, villages.length]);
 
   const loadProvinces = async () => {
     setLoadingProvinces(true);
@@ -153,6 +210,13 @@ export function AddressDropdowns({
     loadRegencies(code);
   };
 
+  // Pre-load regencies when province dropdown is hovered or focused
+  const preLoadRegencies = () => {
+    if (provinceCode && regencies.length === 0 && !loadingRegencies) {
+      loadRegencies(provinceCode);
+    }
+  };
+
   const handleRegencyChange = async (code: string) => {
     const selected = regencies.find(r => r.code === code);
     if (!selected) return;
@@ -174,6 +238,13 @@ export function AddressDropdowns({
     loadDistricts(code);
   };
 
+  // Pre-load districts when regency dropdown is hovered or focused
+  const preLoadDistricts = () => {
+    if (regencyCode && districts.length === 0 && !loadingDistricts) {
+      loadDistricts(regencyCode);
+    }
+  };
+
   const handleDistrictChange = async (code: string) => {
     const selected = districts.find(d => d.code === code);
     if (!selected) return;
@@ -192,6 +263,13 @@ export function AddressDropdowns({
     });
 
     loadVillages(code);
+  };
+
+  // Pre-load villages when district dropdown is hovered or focused
+  const preLoadVillages = () => {
+    if (districtCode && villages.length === 0 && !loadingVillages) {
+      loadVillages(districtCode);
+    }
   };
 
   const handleVillageChange = (code: string) => {
@@ -230,7 +308,7 @@ export function AddressDropdowns({
         </Select>
       </div>
       
-      <div className="space-y-2">
+      <div className="space-y-2" onMouseEnter={preLoadRegencies} onFocusCapture={preLoadRegencies}>
         <Label>Kabupaten/Kota *</Label>
         <Select
           value={regencyCode}
@@ -248,7 +326,7 @@ export function AddressDropdowns({
         </Select>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2" onMouseEnter={preLoadDistricts} onFocusCapture={preLoadDistricts}>
         <Label>Kecamatan *</Label>
         <Select
           value={districtCode}
@@ -266,7 +344,7 @@ export function AddressDropdowns({
         </Select>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2" onMouseEnter={preLoadVillages} onFocusCapture={preLoadVillages}>
         <Label>Kelurahan/Desa *</Label>
         <Select
           value={villageCode}

@@ -479,8 +479,8 @@ export default function AdminSettingsPage() {
 // [Keeping the existing implementations from the original file...]
 
 function AddressApiForm({ initialValues, onSave, isSaving }: { initialValues?: AddressApiSettings; onSave: (values: AddressApiSettings) => Promise<void>; isSaving: boolean; }) {
-  const [provider, setProvider] = useState(initialValues?.provider || 'emsifa');
-  const [baseUrl, setBaseUrl] = useState(initialValues?.base_url || 'https://emsifa.github.io/api-wilayah-indonesia/api');
+  const [provider, setProvider] = useState(initialValues?.provider || 'wilayah.id');
+  const [baseUrl, setBaseUrl] = useState(initialValues?.base_url || 'https://wilayah.id/api');
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ provider, base_url: baseUrl }); };
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

@@ -92,7 +92,24 @@ const STATIC_PROVINCES: Region[] = [
   { code: "96", name: "Papua Barat Daya" },
 ];
 
-const BASE_URL = 'https://wilayah.id/api';
+let BASE_URL = 'https://wilayah.id/api';
+
+// Try to load custom API URL from localStorage (cached from system settings)
+try {
+  const customApiUrl = localStorage.getItem('custom_address_api_url');
+  if (customApiUrl) {
+    BASE_URL = customApiUrl;
+  }
+} catch (e) {
+  // Ignore localStorage errors
+}
+
+export function setBaseUrl(url: string) {
+  BASE_URL = url;
+  try {
+    localStorage.setItem('custom_address_api_url', url);
+  } catch (e) {}
+}
 
 async function fetchDirect(url: string, signal?: AbortSignal): Promise<Response | null> {
   try {

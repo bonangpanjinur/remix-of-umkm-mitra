@@ -33,6 +33,7 @@ import {
 } from '../lib/addressApi';
 import type { Village } from '../types';
 import { MerchantLocationPicker } from '../components/merchant/MerchantLocationPicker';
+import { AddressDropdowns } from '../components/admin/AddressDropdowns';
 import { HalalRegistrationInfo } from '../components/merchant/HalalRegistrationInfo';
 
 const merchantSchema = z.object({
@@ -102,24 +103,16 @@ export default function RegisterMerchantPage() {
   const draftRestoredRef = useRef(false);
   const saveDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  const [selectedProvince, setSelectedProvince] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [selectedSubdistrict, setSelectedSubdistrict] = useState('');
-  
-  const [provincesList, setProvincesList] = useState<Region[]>([]);
-  const [cities, setCities] = useState<Region[]>([]);
-  const [districtsList, setDistrictsList] = useState<Region[]>([]);
-  const [subdistrictsList, setSubdistrictsList] = useState<Region[]>([]);
-  
-  const [loadingProvinces, setLoadingProvinces] = useState(false);
-  const [loadingCities, setLoadingCities] = useState(false);
-  const [loadingDistricts, setLoadingDistricts] = useState(false);
-  const [loadingSubdistricts, setLoadingSubdistricts] = useState(false);
-
-  // Error states for retry
-  const [errorDistricts, setErrorDistricts] = useState(false);
-  const [errorSubdistricts, setErrorSubdistricts] = useState(false);
+  const [addressData, setAddressData] = useState({
+    provinceCode: '',
+    provinceName: '',
+    regencyCode: '',
+    regencyName: '',
+    districtCode: '',
+    districtName: '',
+    villageCode: '',
+    villageName: '',
+  });
   
   const [matchedVillage, setMatchedVillage] = useState<Village | null>(null);
   const [villageLoading, setVillageLoading] = useState(false);
@@ -137,7 +130,7 @@ export default function RegisterMerchantPage() {
   });
   const [referralCode, setReferralCode] = useState('');
 
-  const { register, handleSubmit, setValue, watch, getValues, formState: { errors } } = useForm<MerchantFormData>({
+  const { register, handleSubmit, setValue, watch, getValues, trigger, formState: { errors } } = useForm<MerchantFormData>({
     resolver: zodResolver(merchantSchema),
   });
 
@@ -153,10 +146,10 @@ export default function RegisterMerchantPage() {
       openTime: values.openTime || '',
       closeTime: values.closeTime || '',
       addressDetail: values.addressDetail || '',
-      selectedProvince,
-      selectedCity,
-      selectedDistrict,
-      selectedSubdistrict,
+      selectedProvince: addressData.provinceCode,
+      selectedCity: addressData.regencyCode,
+      selectedDistrict: addressData.districtCode,
+      selectedSubdistrict: addressData.villageCode,
       merchantLocation,
       halalStatus,
       halalCertUrl,
@@ -166,7 +159,7 @@ export default function RegisterMerchantPage() {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
       setHasDraft(true);
     } catch {}
-  }, [getValues, referralCode, selectedProvince, selectedCity, selectedDistrict, selectedSubdistrict, merchantLocation, halalStatus, halalCertUrl, ktpUrl]);
+  }, [getValues, referralCode, addressData, merchantLocation, halalStatus, halalCertUrl, ktpUrl]);
 
   // Debounced auto-save
   const scheduleSaveDraft = useCallback(() => {
@@ -180,7 +173,7 @@ export default function RegisterMerchantPage() {
     if (draftRestoredRef.current) {
       scheduleSaveDraft();
     }
-  }, [watchedFields, referralCode, selectedProvince, selectedCity, selectedDistrict, selectedSubdistrict, merchantLocation, halalStatus, halalCertUrl, ktpUrl, scheduleSaveDraft]);
+  }, [watchedFields, referralCode, addressData, merchantLocation, halalStatus, halalCertUrl, ktpUrl, scheduleSaveDraft]);
 
   // === DRAFT: Restore on mount ===
   useEffect(() => {
@@ -208,22 +201,20 @@ export default function RegisterMerchantPage() {
       if (draft.ktpUrl) setKtpUrl(draft.ktpUrl);
 
       // Restore address chain
-      if (draft.selectedProvince) {
-        setSelectedProvince(draft.selectedProvince);
-        setValue('province', draft.selectedProvince);
-      }
-      if (draft.selectedCity) {
-        setSelectedCity(draft.selectedCity);
-        setValue('city', draft.selectedCity);
-      }
-      if (draft.selectedDistrict) {
-        setSelectedDistrict(draft.selectedDistrict);
-        setValue('district', draft.selectedDistrict);
-      }
-      if (draft.selectedSubdistrict) {
-        setSelectedSubdistrict(draft.selectedSubdistrict);
-        setValue('subdistrict', draft.selectedSubdistrict);
-      }
+      setAddressData({
+        provinceCode: draft.selectedProvince || '',
+        provinceName: '', // Will be updated by dropdown component
+        regencyCode: draft.selectedCity || '',
+        regencyName: '',
+        districtCode: draft.selectedDistrict || '',
+        districtName: '',
+        villageCode: draft.selectedSubdistrict || '',
+        villageName: '',
+      });
+      if (draft.selectedProvince) setValue('province', draft.selectedProvince);
+      if (draft.selectedCity) setValue('city', draft.selectedCity);
+      if (draft.selectedDistrict) setValue('district', draft.selectedDistrict);
+      if (draft.selectedSubdistrict) setValue('subdistrict', draft.selectedSubdistrict);
 
       toast.info('Draft formulir dipulihkan');
     } catch {
@@ -238,126 +229,35 @@ export default function RegisterMerchantPage() {
     toast.success('Draft dihapus');
   };
 
-  // === Address loading ===
+  // Check if selected subdistrict matches any village in our DB
   useEffect(() => {
-    const loadProvinces = async () => {
-      setLoadingProvinces(true);
-      try {
-        const data = await fetchProvinces();
-        setProvincesList(data);
-      } catch (error) {
-        console.error('Error loading provinces:', error);
-        toast.error('Gagal memuat data provinsi');
-      } finally {
-        setLoadingProvinces(false);
-      }
-    };
-    loadProvinces();
-  }, []);
-
-  useEffect(() => {
-    const loadCities = async () => {
-      if (selectedProvince) {
-        setLoadingCities(true);
+    const checkVillageMatch = async () => {
+      if (addressData.villageCode && addressData.villageName) {
+        setVillageLoading(true);
         try {
-          const data = await fetchRegencies(selectedProvince);
-          setCities(data);
-          if (!draftRestoredRef.current) return;
-          // Only reset if user manually changed province (not draft restore)
+          const { data, error } = await supabase
+            .from('villages')
+            .select('*')
+            .eq('subdistrict', addressData.villageName)
+            .eq('is_active', true)
+            .maybeSingle();
+          
+          if (data) {
+            setMatchedVillage(data as Village);
+          } else {
+            setMatchedVillage(null);
+          }
         } catch (error) {
-          console.error('Error loading cities:', error);
-          toast.error('Gagal memuat data kabupaten/kota');
+          console.error('Error checking village match:', error);
         } finally {
-          setLoadingCities(false);
+          setVillageLoading(false);
         }
       } else {
-        setCities([]);
+        setMatchedVillage(null);
       }
     };
-    loadCities();
-  }, [selectedProvince]);
-
-  const loadDistrictsFn = useCallback(async (cityCode: string) => {
-    if (!cityCode) { setDistrictsList([]); return; }
-    setLoadingDistricts(true);
-    setErrorDistricts(false);
-    try {
-      const data = await fetchDistricts(cityCode);
-      setDistrictsList(data);
-      if (data.length === 0 && cityCode) setErrorDistricts(true);
-    } catch (error) {
-      console.error('Error loading districts:', error);
-      setErrorDistricts(true);
-    } finally {
-      setLoadingDistricts(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadDistrictsFn(selectedCity);
-  }, [selectedCity, loadDistrictsFn]);
-
-  const loadSubdistrictsFn = useCallback(async (districtCode: string) => {
-    if (!districtCode) { setSubdistrictsList([]); return; }
-    setLoadingSubdistricts(true);
-    setErrorSubdistricts(false);
-    try {
-      const data = await fetchVillages(districtCode);
-      setSubdistrictsList(data);
-      if (data.length === 0 && districtCode) setErrorSubdistricts(true);
-    } catch (error) {
-      console.error('Error loading subdistricts:', error);
-      setErrorSubdistricts(true);
-    } finally {
-      setLoadingSubdistricts(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadSubdistrictsFn(selectedDistrict);
-  }, [selectedDistrict, loadSubdistrictsFn]);
-
-  useEffect(() => {
-    async function checkVillageMatch() {
-      if (!selectedSubdistrict) {
-        setMatchedVillage(null);
-        return;
-      }
-
-      setVillageLoading(true);
-      try {
-        const subdistrictName = subdistrictsList.find(s => s.code === selectedSubdistrict)?.name || '';
-        
-        const { data, error } = await supabase
-          .from('villages')
-          .select('*')
-          .or(`name.ilike.%${subdistrictName}%,district.ilike.%${subdistrictName}%,subdistrict.ilike.%${subdistrictName}%`)
-          .limit(1);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          setMatchedVillage({
-            id: data[0].id,
-            name: data[0].name,
-            district: data[0].district,
-            regency: data[0].regency,
-            description: data[0].description || '',
-            image: data[0].image_url || '',
-            isActive: data[0].is_active,
-          });
-        } else {
-          setMatchedVillage(null);
-        }
-      } catch (error) {
-        console.error('Error checking village match:', error);
-        setMatchedVillage(null);
-      } finally {
-        setVillageLoading(false);
-      }
-    }
     checkVillageMatch();
-  }, [selectedSubdistrict, subdistrictsList]);
+  }, [addressData.villageCode, addressData.villageName]);
 
   const validateReferralCode = async (code: string) => {
     if (code.length < 3) {
@@ -414,10 +314,10 @@ export default function RegisterMerchantPage() {
 
     setIsSubmitting(true);
     try {
-      const provinceName = provincesList.find(p => p.code === data.province)?.name || '';
-      const cityName = cities.find(c => c.code === data.city)?.name || '';
-      const districtName = districtsList.find(d => d.code === data.district)?.name || '';
-      const subdistrictName = subdistrictsList.find(s => s.code === data.subdistrict)?.name || '';
+      const provinceName = addressData.provinceName;
+      const cityName = addressData.regencyName;
+      const districtName = addressData.districtName;
+      const subdistrictName = addressData.villageName;
 
       if (!user) {
         toast.error('Anda harus login untuk mendaftar');
@@ -660,129 +560,30 @@ export default function RegisterMerchantPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Provinsi</Label>
-                <Select onValueChange={(val) => {
-                  setSelectedProvince(val);
-                  setValue('province', val);
-                  // Reset dependents
-                  setSelectedCity(''); setSelectedDistrict(''); setSelectedSubdistrict('');
-                  setValue('city', ''); setValue('district', ''); setValue('subdistrict', '');
-                  setCities([]); setDistrictsList([]); setSubdistrictsList([]);
-                }} value={selectedProvince || undefined}>
-                  <SelectTrigger>
-                    <div className="flex items-center gap-2">
-                      {loadingProvinces && <Loader2 className="w-3 h-3 animate-spin" />}
-                      <SelectValue placeholder="Pilih provinsi" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {provincesList.map((p) => (
-                      <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <AddressDropdowns
+                provinceCode={addressData.provinceCode}
+                provinceName={addressData.provinceName}
+                regencyCode={addressData.regencyCode}
+                regencyName={addressData.regencyName}
+                districtCode={addressData.districtCode}
+                districtName={addressData.districtName}
+                villageCode={addressData.villageCode}
+                villageName={addressData.villageName}
+                onChange={(data) => {
+                  setAddressData(data);
+                  setValue('province', data.provinceCode);
+                  setValue('city', data.regencyCode);
+                  setValue('district', data.districtCode);
+                  setValue('subdistrict', data.villageCode);
+                  
+                  // Trigger validation for these fields
+                  trigger(['province', 'city', 'district', 'subdistrict']);
+                }}
+              />
+              <div className="grid grid-cols-2 gap-4">
                 {errors.province && <p className="text-xs text-destructive">{errors.province.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Kabupaten/Kota</Label>
-                <Select 
-                  disabled={!selectedProvince || loadingCities}
-                  onValueChange={(val) => {
-                    setSelectedCity(val);
-                    setValue('city', val);
-                    // Reset dependents
-                    setSelectedDistrict(''); setSelectedSubdistrict('');
-                    setValue('district', ''); setValue('subdistrict', '');
-                    setDistrictsList([]); setSubdistrictsList([]);
-                  }}
-                  value={selectedCity || undefined}
-                >
-                  <SelectTrigger>
-                    <div className="flex items-center gap-2">
-                      {loadingCities && <Loader2 className="w-3 h-3 animate-spin" />}
-                      <SelectValue placeholder={loadingCities ? "Memuat..." : "Pilih kabupaten/kota"} />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map((c) => (
-                      <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 {errors.city && <p className="text-xs text-destructive">{errors.city.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Kecamatan</Label>
-                <Select 
-                  disabled={!selectedCity || loadingDistricts}
-                  onValueChange={(val) => {
-                    setSelectedDistrict(val);
-                    setValue('district', val);
-                    // Reset dependents
-                    setSelectedSubdistrict('');
-                    setValue('subdistrict', '');
-                    setSubdistrictsList([]);
-                  }}
-                  value={selectedDistrict || undefined}
-                >
-                  <SelectTrigger>
-                    <div className="flex items-center gap-2">
-                      {loadingDistricts && <Loader2 className="w-3 h-3 animate-spin" />}
-                      <SelectValue placeholder={loadingDistricts ? "Memuat..." : "Pilih kecamatan"} />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {districtsList.map((d) => (
-                      <SelectItem key={d.code} value={d.code}>{d.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errorDistricts && !loadingDistricts && (
-                  <div className="flex items-center gap-2 text-xs text-destructive">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>Gagal memuat data kecamatan.</span>
-                    <button type="button" onClick={() => loadDistrictsFn(selectedCity)} className="underline font-medium flex items-center gap-1">
-                      <RefreshCw className="w-3 h-3" /> Coba Lagi
-                    </button>
-                  </div>
-                )}
                 {errors.district && <p className="text-xs text-destructive">{errors.district.message}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Kelurahan/Desa</Label>
-                <Select 
-                  disabled={!selectedDistrict || loadingSubdistricts}
-                  onValueChange={(val) => {
-                    setSelectedSubdistrict(val);
-                    setValue('subdistrict', val);
-                  }}
-                  value={selectedSubdistrict || undefined}
-                >
-                  <SelectTrigger>
-                    <div className="flex items-center gap-2">
-                      {loadingSubdistricts && <Loader2 className="w-3 h-3 animate-spin" />}
-                      <SelectValue placeholder={loadingSubdistricts ? "Memuat..." : "Pilih kelurahan/desa"} />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subdistrictsList.map((s) => (
-                      <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errorSubdistricts && !loadingSubdistricts && (
-                  <div className="flex items-center gap-2 text-xs text-destructive">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>Gagal memuat data kelurahan.</span>
-                    <button type="button" onClick={() => loadSubdistrictsFn(selectedDistrict)} className="underline font-medium flex items-center gap-1">
-                      <RefreshCw className="w-3 h-3" /> Coba Lagi
-                    </button>
-                  </div>
-                )}
                 {errors.subdistrict && <p className="text-xs text-destructive">{errors.subdistrict.message}</p>}
               </div>
 
