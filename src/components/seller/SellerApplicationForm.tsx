@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, Store } from "lucide-react";
+import { Loader2, Store, MapPin, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -11,6 +11,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,17 +74,23 @@ export default function SellerApplicationForm() {
   useEffect(() => {
     const fetchProvincesData = async () => {
       setIsLoadingProvinces(true);
-      const data = await locationService.getProvinces();
-      setProvinces(data);
-      setIsLoadingProvinces(false);
+      try {
+        const data = await locationService.getProvinces();
+        setProvinces(data);
+      } catch (error) {
+        console.error("Failed to fetch provinces", error);
+      } finally {
+        setIsLoadingProvinces(false);
+      }
     };
     fetchProvincesData();
   }, []);
 
-  // 2. Handler perubahan Provinsi -> Fetch Kota
+  // 2. Handler perubahan Provinsi -> Fetch Kota & Reset Dropdown Anak
   const handleProvinceChange = async (value: string) => {
     form.setValue("province", value);
-    // Reset field di bawahnya
+    
+    // Auto-reset field di bawahnya
     form.setValue("city", "");
     form.setValue("district", "");
     form.setValue("village", "");
@@ -93,15 +100,22 @@ export default function SellerApplicationForm() {
 
     if (value) {
       setIsLoadingCities(true);
-      const data = await locationService.getRegencies(value);
-      setCities(data);
-      setIsLoadingCities(false);
+      try {
+        const data = await locationService.getRegencies(value);
+        setCities(data);
+      } catch (error) {
+        console.error("Failed to fetch cities", error);
+      } finally {
+        setIsLoadingCities(false);
+      }
     }
   };
 
-  // 3. Handler perubahan Kota -> Fetch Kecamatan
+  // 3. Handler perubahan Kota -> Fetch Kecamatan & Reset Dropdown Anak
   const handleCityChange = async (value: string) => {
     form.setValue("city", value);
+    
+    // Auto-reset field di bawahnya
     form.setValue("district", "");
     form.setValue("village", "");
     setDistricts([]);
@@ -109,23 +123,35 @@ export default function SellerApplicationForm() {
 
     if (value) {
       setIsLoadingDistricts(true);
-      const data = await locationService.getDistricts(value);
-      setDistricts(data);
-      setIsLoadingDistricts(false);
+      try {
+        const data = await locationService.getDistricts(value);
+        setDistricts(data);
+      } catch (error) {
+        console.error("Failed to fetch districts", error);
+      } finally {
+        setIsLoadingDistricts(false);
+      }
     }
   };
 
-  // 4. Handler perubahan Kecamatan -> Fetch Kelurahan
+  // 4. Handler perubahan Kecamatan -> Fetch Kelurahan & Reset Dropdown Anak
   const handleDistrictChange = async (value: string) => {
     form.setValue("district", value);
+    
+    // Auto-reset field di bawahnya
     form.setValue("village", "");
     setVillages([]);
 
     if (value) {
       setIsLoadingVillages(true);
-      const data = await locationService.getVillages(value);
-      setVillages(data);
-      setIsLoadingVillages(false);
+      try {
+        const data = await locationService.getVillages(value);
+        setVillages(data);
+      } catch (error) {
+        console.error("Failed to fetch villages", error);
+      } finally {
+        setIsLoadingVillages(false);
+      }
     }
   };
 
@@ -150,7 +176,7 @@ export default function SellerApplicationForm() {
       const districtName = locationService.getNameById(districts, values.district);
       const villageName = locationService.getNameById(villages, values.village);
 
-      // Simpan ke database (menyesuaikan skema tabel yang ada di RegisterMerchantPage)
+      // Simpan ke database
       const { error } = await supabase
         .from('merchants') 
         .insert({
@@ -188,32 +214,33 @@ export default function SellerApplicationForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4 md:p-6 bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
-      <div className="mb-8 text-center">
-        <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4 text-primary">
-          <Store className="w-6 h-6" />
+    <div className="max-w-2xl mx-auto p-4 md:p-8 bg-white dark:bg-gray-950 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800">
+      <div className="mb-10 text-center">
+        <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 text-primary rotate-3 hover:rotate-0 transition-transform">
+          <Store className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Daftar Merchant Baru</h2>
-        <p className="text-gray-500 dark:text-gray-400 mt-2">Mulai berjualan dengan mengisi data usaha Anda</p>
+        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Daftar Merchant Baru</h2>
+        <p className="text-gray-500 dark:text-gray-400 mt-3 text-lg">Mulai kembangkan usaha Anda bersama kami</p>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center">1</span>
-              Informasi Toko
-            </h3>
+          {/* Section 1: Profil Usaha */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm">1</div>
+              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">Profil Usaha</h3>
+            </div>
             
             <FormField
               control={form.control}
               name="shopName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nama Toko</FormLabel>
+                  <FormLabel>Nama Toko / Usaha</FormLabel>
                   <FormControl>
-                    <Input placeholder="Contoh: Barokah Toko" {...field} />
+                    <Input placeholder="Contoh: Kedai Berkah Jaya" className="h-11" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -225,14 +252,15 @@ export default function SellerApplicationForm() {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Deskripsi Singkat</FormLabel>
+                  <FormLabel>Deskripsi Usaha</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Jelaskan produk yang Anda jual..." 
-                      className="resize-none h-24"
+                      placeholder="Ceritakan sedikit tentang produk atau layanan Anda..." 
+                      className="resize-none h-28 focus-visible:ring-primary"
                       {...field} 
                     />
                   </FormControl>
+                  <FormDescription>Minimal 10 karakter agar calon pelanggan mengenal usaha Anda.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -243,9 +271,9 @@ export default function SellerApplicationForm() {
               name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nomor WhatsApp</FormLabel>
+                  <FormLabel>Nomor WhatsApp Aktif</FormLabel>
                   <FormControl>
-                    <Input type="tel" placeholder="08xxxxxxxxxx" {...field} />
+                    <Input type="tel" placeholder="081234567890" className="h-11" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -253,15 +281,16 @@ export default function SellerApplicationForm() {
             />
           </div>
 
-          <div className="border-t border-gray-100 dark:border-gray-800 my-6"></div>
+          <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-800 to-transparent my-8"></div>
 
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center">2</span>
-              Lokasi Usaha
-            </h3>
+          {/* Section 2: Lokasi Operasional */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-sm">2</div>
+              <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200">Lokasi Operasional</h3>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <FormField
                 control={form.control}
                 name="province"
@@ -274,8 +303,15 @@ export default function SellerApplicationForm() {
                       disabled={isLoadingProvinces}
                     >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={isLoadingProvinces ? "Memuat..." : "Pilih Provinsi"} />
+                        <SelectTrigger className="h-11">
+                          {isLoadingProvinces ? (
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Memuat...</span>
+                            </div>
+                          ) : (
+                            <SelectValue placeholder="Pilih Provinsi" />
+                          )}
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -296,15 +332,22 @@ export default function SellerApplicationForm() {
                 name="city"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Kota/Kabupaten</FormLabel>
+                    <FormLabel>Kota / Kabupaten</FormLabel>
                     <Select 
                       onValueChange={handleCityChange} 
                       value={field.value}
                       disabled={isLoadingCities || !form.watch("province")}
                     >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={isLoadingCities ? "Memuat..." : "Pilih Kota"} />
+                        <SelectTrigger className="h-11">
+                          {isLoadingCities ? (
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Memuat...</span>
+                            </div>
+                          ) : (
+                            <SelectValue placeholder="Pilih Kota" />
+                          )}
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -332,8 +375,15 @@ export default function SellerApplicationForm() {
                       disabled={isLoadingDistricts || !form.watch("city")}
                     >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={isLoadingDistricts ? "Memuat..." : "Pilih Kecamatan"} />
+                        <SelectTrigger className="h-11">
+                          {isLoadingDistricts ? (
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Memuat...</span>
+                            </div>
+                          ) : (
+                            <SelectValue placeholder="Pilih Kecamatan" />
+                          )}
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -354,15 +404,22 @@ export default function SellerApplicationForm() {
                 name="village"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Kelurahan/Desa</FormLabel>
+                    <FormLabel>Kelurahan / Desa</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
                       value={field.value}
                       disabled={isLoadingVillages || !form.watch("district")}
                     >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={isLoadingVillages ? "Memuat..." : "Pilih Kelurahan"} />
+                        <SelectTrigger className="h-11">
+                          {isLoadingVillages ? (
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Memuat...</span>
+                            </div>
+                          ) : (
+                            <SelectValue placeholder="Pilih Kelurahan" />
+                          )}
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -387,8 +444,8 @@ export default function SellerApplicationForm() {
                   <FormLabel>Alamat Lengkap</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Nama jalan, nomor rumah, RT/RW..." 
-                      className="resize-none h-20"
+                      placeholder="Nama jalan, blok, nomor rumah, RT/RW..." 
+                      className="resize-none h-24"
                       {...field} 
                     />
                   </FormControl>
@@ -398,14 +455,18 @@ export default function SellerApplicationForm() {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button 
+            type="submit" 
+            className="w-full h-12 text-lg font-bold shadow-md hover:shadow-lg transition-all" 
+            disabled={isSubmitting}
+          >
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Mengirim...
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Memproses Pendaftaran...
               </>
             ) : (
-              "Daftar Sekarang"
+              "Daftar Sebagai Merchant"
             )}
           </Button>
         </form>
