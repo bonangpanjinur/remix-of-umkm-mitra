@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { 
   Store, Phone, MapPin, ArrowLeft, CheckCircle, Clock, 
-  Tag, FileText, Building, Shield, AlertCircle, Check, Mail, Loader2, ShieldCheck
+  Tag, FileText, Building, Shield, AlertCircle, Check, Mail, Loader2, ShieldCheck, RefreshCw, Save, Trash2
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BottomNav } from '../components/layout/BottomNav';
@@ -52,6 +52,8 @@ const merchantSchema = z.object({
 
 type MerchantFormData = z.infer<typeof merchantSchema>;
 
+const DRAFT_KEY = 'merchant_registration_draft';
+
 const timeOptions = [
   '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
   '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
@@ -71,12 +73,34 @@ interface ReferralInfo {
   isLoading: boolean;
 }
 
+interface DraftData {
+  referralCode: string;
+  name: string;
+  businessCategory: string;
+  businessDescription: string;
+  phone: string;
+  openTime: string;
+  closeTime: string;
+  addressDetail: string;
+  selectedProvince: string;
+  selectedCity: string;
+  selectedDistrict: string;
+  selectedSubdistrict: string;
+  merchantLocation: { lat: number; lng: number } | null;
+  halalStatus: string;
+  halalCertUrl?: string;
+  ktpUrl?: string;
+}
+
 export default function RegisterMerchantPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const draftRestoredRef = useRef(false);
+  const saveDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
@@ -88,11 +112,14 @@ export default function RegisterMerchantPage() {
   const [districtsList, setDistrictsList] = useState<Region[]>([]);
   const [subdistrictsList, setSubdistrictsList] = useState<Region[]>([]);
   
-  // Loading states for address dropdowns
   const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
   const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [loadingSubdistricts, setLoadingSubdistricts] = useState(false);
+
+  // Error states for retry
+  const [errorDistricts, setErrorDistricts] = useState(false);
+  const [errorSubdistricts, setErrorSubdistricts] = useState(false);
   
   const [matchedVillage, setMatchedVillage] = useState<Village | null>(null);
   const [villageLoading, setVillageLoading] = useState(false);
@@ -110,10 +137,108 @@ export default function RegisterMerchantPage() {
   });
   const [referralCode, setReferralCode] = useState('');
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<MerchantFormData>({
+  const { register, handleSubmit, setValue, watch, getValues, formState: { errors } } = useForm<MerchantFormData>({
     resolver: zodResolver(merchantSchema),
   });
 
+  // === DRAFT: Save ===
+  const saveDraft = useCallback(() => {
+    const values = getValues();
+    const draft: DraftData = {
+      referralCode,
+      name: values.name || '',
+      businessCategory: values.businessCategory || '',
+      businessDescription: values.businessDescription || '',
+      phone: values.phone || '',
+      openTime: values.openTime || '',
+      closeTime: values.closeTime || '',
+      addressDetail: values.addressDetail || '',
+      selectedProvince,
+      selectedCity,
+      selectedDistrict,
+      selectedSubdistrict,
+      merchantLocation,
+      halalStatus,
+      halalCertUrl,
+      ktpUrl,
+    };
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      setHasDraft(true);
+    } catch {}
+  }, [getValues, referralCode, selectedProvince, selectedCity, selectedDistrict, selectedSubdistrict, merchantLocation, halalStatus, halalCertUrl, ktpUrl]);
+
+  // Debounced auto-save
+  const scheduleSaveDraft = useCallback(() => {
+    if (saveDraftTimerRef.current) clearTimeout(saveDraftTimerRef.current);
+    saveDraftTimerRef.current = setTimeout(() => saveDraft(), 500);
+  }, [saveDraft]);
+
+  // Watch all form fields for auto-save
+  const watchedFields = watch();
+  useEffect(() => {
+    if (draftRestoredRef.current) {
+      scheduleSaveDraft();
+    }
+  }, [watchedFields, referralCode, selectedProvince, selectedCity, selectedDistrict, selectedSubdistrict, merchantLocation, halalStatus, halalCertUrl, ktpUrl, scheduleSaveDraft]);
+
+  // === DRAFT: Restore on mount ===
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) {
+        draftRestoredRef.current = true;
+        return;
+      }
+      const draft: DraftData = JSON.parse(raw);
+      setHasDraft(true);
+
+      // Restore simple fields
+      if (draft.name) setValue('name', draft.name);
+      if (draft.businessCategory) setValue('businessCategory', draft.businessCategory);
+      if (draft.businessDescription) setValue('businessDescription', draft.businessDescription);
+      if (draft.phone) setValue('phone', draft.phone);
+      if (draft.openTime) setValue('openTime', draft.openTime);
+      if (draft.closeTime) setValue('closeTime', draft.closeTime);
+      if (draft.addressDetail) setValue('addressDetail', draft.addressDetail);
+      if (draft.referralCode) setReferralCode(draft.referralCode);
+      if (draft.merchantLocation) setMerchantLocation(draft.merchantLocation);
+      if (draft.halalStatus) setHalalStatus(draft.halalStatus as any);
+      if (draft.halalCertUrl) setHalalCertUrl(draft.halalCertUrl);
+      if (draft.ktpUrl) setKtpUrl(draft.ktpUrl);
+
+      // Restore address chain
+      if (draft.selectedProvince) {
+        setSelectedProvince(draft.selectedProvince);
+        setValue('province', draft.selectedProvince);
+      }
+      if (draft.selectedCity) {
+        setSelectedCity(draft.selectedCity);
+        setValue('city', draft.selectedCity);
+      }
+      if (draft.selectedDistrict) {
+        setSelectedDistrict(draft.selectedDistrict);
+        setValue('district', draft.selectedDistrict);
+      }
+      if (draft.selectedSubdistrict) {
+        setSelectedSubdistrict(draft.selectedSubdistrict);
+        setValue('subdistrict', draft.selectedSubdistrict);
+      }
+
+      toast.info('Draft formulir dipulihkan');
+    } catch {
+      console.warn('Failed to restore draft');
+    }
+    draftRestoredRef.current = true;
+  }, [setValue]);
+
+  const clearDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setHasDraft(false);
+    toast.success('Draft dihapus');
+  };
+
+  // === Address loading ===
   useEffect(() => {
     const loadProvinces = async () => {
       setLoadingProvinces(true);
@@ -137,13 +262,8 @@ export default function RegisterMerchantPage() {
         try {
           const data = await fetchRegencies(selectedProvince);
           setCities(data);
-          // Reset dependent fields
-          setSelectedCity('');
-          setSelectedDistrict('');
-          setSelectedSubdistrict('');
-          setValue('city', '');
-          setValue('district', '');
-          setValue('subdistrict', '');
+          if (!draftRestoredRef.current) return;
+          // Only reset if user manually changed province (not draft restore)
         } catch (error) {
           console.error('Error loading cities:', error);
           toast.error('Gagal memuat data kabupaten/kota');
@@ -155,55 +275,47 @@ export default function RegisterMerchantPage() {
       }
     };
     loadCities();
-  }, [selectedProvince, setValue]);
+  }, [selectedProvince]);
+
+  const loadDistrictsFn = useCallback(async (cityCode: string) => {
+    if (!cityCode) { setDistrictsList([]); return; }
+    setLoadingDistricts(true);
+    setErrorDistricts(false);
+    try {
+      const data = await fetchDistricts(cityCode);
+      setDistrictsList(data);
+      if (data.length === 0 && cityCode) setErrorDistricts(true);
+    } catch (error) {
+      console.error('Error loading districts:', error);
+      setErrorDistricts(true);
+    } finally {
+      setLoadingDistricts(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadDistricts = async () => {
-      if (selectedCity) {
-        setLoadingDistricts(true);
-        try {
-          const data = await fetchDistricts(selectedCity);
-          setDistrictsList(data);
-          // Reset dependent fields
-          setSelectedDistrict('');
-          setSelectedSubdistrict('');
-          setValue('district', '');
-          setValue('subdistrict', '');
-        } catch (error) {
-          console.error('Error loading districts:', error);
-          toast.error('Gagal memuat data kecamatan');
-        } finally {
-          setLoadingDistricts(false);
-        }
-      } else {
-        setDistrictsList([]);
-      }
-    };
-    loadDistricts();
-  }, [selectedCity, setValue]);
+    loadDistrictsFn(selectedCity);
+  }, [selectedCity, loadDistrictsFn]);
+
+  const loadSubdistrictsFn = useCallback(async (districtCode: string) => {
+    if (!districtCode) { setSubdistrictsList([]); return; }
+    setLoadingSubdistricts(true);
+    setErrorSubdistricts(false);
+    try {
+      const data = await fetchVillages(districtCode);
+      setSubdistrictsList(data);
+      if (data.length === 0 && districtCode) setErrorSubdistricts(true);
+    } catch (error) {
+      console.error('Error loading subdistricts:', error);
+      setErrorSubdistricts(true);
+    } finally {
+      setLoadingSubdistricts(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const loadSubdistricts = async () => {
-      if (selectedDistrict) {
-        setLoadingSubdistricts(true);
-        try {
-          const data = await fetchVillages(selectedDistrict);
-          setSubdistrictsList(data);
-          // Reset dependent fields
-          setSelectedSubdistrict('');
-          setValue('subdistrict', '');
-        } catch (error) {
-          console.error('Error loading subdistricts:', error);
-          toast.error('Gagal memuat data kelurahan/desa');
-        } finally {
-          setLoadingSubdistricts(false);
-        }
-      } else {
-        setSubdistrictsList([]);
-      }
-    };
-    loadSubdistricts();
-  }, [selectedDistrict, setValue]);
+    loadSubdistrictsFn(selectedDistrict);
+  }, [selectedDistrict, loadSubdistrictsFn]);
 
   useEffect(() => {
     async function checkVillageMatch() {
@@ -342,6 +454,9 @@ export default function RegisterMerchantPage() {
       });
 
       if (error) throw error;
+      // Clear draft on success
+      localStorage.removeItem(DRAFT_KEY);
+      setHasDraft(false);
       setIsSuccess(true);
       setShowEmailModal(true);
       toast.success('Pendaftaran pedagang berhasil dikirim!');
@@ -383,6 +498,20 @@ export default function RegisterMerchantPage() {
       <PageHeader title="Daftar Jadi Merchant" />
       
       <main className="p-4 max-w-2xl mx-auto">
+        {/* Draft banner */}
+        {hasDraft && (
+          <div className="bg-accent/50 border border-accent rounded-xl p-3 mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <Save className="w-4 h-4 text-primary" />
+              <span className="text-muted-foreground">Draft tersimpan otomatis</span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={clearDraft} className="text-xs h-7 gap-1">
+              <Trash2 className="w-3 h-3" />
+              Hapus Draft
+            </Button>
+          </div>
+        )}
+
         <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 mb-6 flex gap-3">
           <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
           <div className="text-sm">
@@ -448,7 +577,7 @@ export default function RegisterMerchantPage() {
 
             <div className="space-y-2">
               <Label>Kategori Usaha</Label>
-              <Select onValueChange={(val) => setValue('businessCategory', val)}>
+              <Select onValueChange={(val) => setValue('businessCategory', val)} value={watch('businessCategory') || undefined}>
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih kategori" />
                 </SelectTrigger>
@@ -494,7 +623,7 @@ export default function RegisterMerchantPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Jam Buka</Label>
-                <Select onValueChange={(val) => setValue('openTime', val)}>
+                <Select onValueChange={(val) => setValue('openTime', val)} value={watch('openTime') || undefined}>
                   <SelectTrigger>
                     <SelectValue placeholder="Buka" />
                   </SelectTrigger>
@@ -508,7 +637,7 @@ export default function RegisterMerchantPage() {
               </div>
               <div className="space-y-2">
                 <Label>Jam Tutup</Label>
-                <Select onValueChange={(val) => setValue('closeTime', val)}>
+                <Select onValueChange={(val) => setValue('closeTime', val)} value={watch('closeTime') || undefined}>
                   <SelectTrigger>
                     <SelectValue placeholder="Tutup" />
                   </SelectTrigger>
@@ -536,7 +665,11 @@ export default function RegisterMerchantPage() {
                 <Select onValueChange={(val) => {
                   setSelectedProvince(val);
                   setValue('province', val);
-                }}>
+                  // Reset dependents
+                  setSelectedCity(''); setSelectedDistrict(''); setSelectedSubdistrict('');
+                  setValue('city', ''); setValue('district', ''); setValue('subdistrict', '');
+                  setCities([]); setDistrictsList([]); setSubdistrictsList([]);
+                }} value={selectedProvince || undefined}>
                   <SelectTrigger>
                     <div className="flex items-center gap-2">
                       {loadingProvinces && <Loader2 className="w-3 h-3 animate-spin" />}
@@ -559,8 +692,12 @@ export default function RegisterMerchantPage() {
                   onValueChange={(val) => {
                     setSelectedCity(val);
                     setValue('city', val);
+                    // Reset dependents
+                    setSelectedDistrict(''); setSelectedSubdistrict('');
+                    setValue('district', ''); setValue('subdistrict', '');
+                    setDistrictsList([]); setSubdistrictsList([]);
                   }}
-                  value={selectedCity}
+                  value={selectedCity || undefined}
                 >
                   <SelectTrigger>
                     <div className="flex items-center gap-2">
@@ -584,8 +721,12 @@ export default function RegisterMerchantPage() {
                   onValueChange={(val) => {
                     setSelectedDistrict(val);
                     setValue('district', val);
+                    // Reset dependents
+                    setSelectedSubdistrict('');
+                    setValue('subdistrict', '');
+                    setSubdistrictsList([]);
                   }}
-                  value={selectedDistrict}
+                  value={selectedDistrict || undefined}
                 >
                   <SelectTrigger>
                     <div className="flex items-center gap-2">
@@ -599,6 +740,15 @@ export default function RegisterMerchantPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {errorDistricts && !loadingDistricts && (
+                  <div className="flex items-center gap-2 text-xs text-destructive">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>Gagal memuat data kecamatan.</span>
+                    <button type="button" onClick={() => loadDistrictsFn(selectedCity)} className="underline font-medium flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3" /> Coba Lagi
+                    </button>
+                  </div>
+                )}
                 {errors.district && <p className="text-xs text-destructive">{errors.district.message}</p>}
               </div>
 
@@ -610,7 +760,7 @@ export default function RegisterMerchantPage() {
                     setSelectedSubdistrict(val);
                     setValue('subdistrict', val);
                   }}
-                  value={selectedSubdistrict}
+                  value={selectedSubdistrict || undefined}
                 >
                   <SelectTrigger>
                     <div className="flex items-center gap-2">
@@ -624,6 +774,15 @@ export default function RegisterMerchantPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                {errorSubdistricts && !loadingSubdistricts && (
+                  <div className="flex items-center gap-2 text-xs text-destructive">
+                    <AlertCircle className="w-3 h-3" />
+                    <span>Gagal memuat data kelurahan.</span>
+                    <button type="button" onClick={() => loadSubdistrictsFn(selectedDistrict)} className="underline font-medium flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3" /> Coba Lagi
+                    </button>
+                  </div>
+                )}
                 {errors.subdistrict && <p className="text-xs text-destructive">{errors.subdistrict.message}</p>}
               </div>
 

@@ -1,6 +1,6 @@
 // Wilayah.id API for Indonesian regions
 // Source: https://wilayah.id/
-// Uses multiple fallback strategies: Edge Function -> CORS Proxy -> Static Data
+// Uses parallel race strategy: all fetch methods run simultaneously, fastest wins
 
 export interface Region {
   code: string;
@@ -17,7 +17,7 @@ interface WilayahResponse {
 
 // Persistent cache using localStorage
 const CACHE_PREFIX = 'address_cache_';
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours for address data
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 function getCacheKey(type: string, code?: string): string {
   return code ? `${type}-${code}` : type;
@@ -94,78 +94,61 @@ const STATIC_PROVINCES: Region[] = [
 
 const BASE_URL = 'https://wilayah.id/api';
 
-async function fetchWithRetry(fetchFn: () => Promise<Response | null>, retries = 1): Promise<Response | null> {
-  for (let i = 0; i <= retries; i++) {
-    const result = await fetchFn();
-    if (result) return result;
-    if (i < retries) await new Promise(r => setTimeout(r, 1000));
-  }
-  return null;
-}
-
-async function fetchDirect(url: string): Promise<Response | null> {
+async function fetchDirect(url: string, signal?: AbortSignal): Promise<Response | null> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    
     const response = await fetch(url, {
       headers: { 'Accept': 'application/json' },
-      signal: controller.signal,
+      signal,
     });
-    
-    clearTimeout(timeoutId);
     if (response.ok) return response;
   } catch (error) {
+    if ((error as Error).name === 'AbortError') throw error;
     console.warn('Direct fetch failed:', error);
   }
   return null;
 }
 
-async function fetchViaEdgeFunction(type: string, code?: string): Promise<Response | null> {
+async function fetchViaEdgeFunction(type: string, code: string | undefined, signal?: AbortSignal): Promise<Response | null> {
   try {
     const projectUrl = import.meta.env.VITE_SUPABASE_URL;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    
     if (!projectUrl || !anonKey) return null;
-    
+
     const params = new URLSearchParams({ type });
     if (code) params.append('code', code);
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    
+
     const response = await fetch(`${projectUrl}/functions/v1/wilayah-proxy?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${anonKey}`,
         'Content-Type': 'application/json',
       },
-      signal: controller.signal,
+      signal,
     });
-    
-    clearTimeout(timeoutId);
     if (response.ok) return response;
   } catch (error) {
-    console.warn('Proxy fetch failed:', error);
+    if ((error as Error).name === 'AbortError') throw error;
+    console.warn('Edge function fetch failed:', error);
   }
   return null;
 }
 
-async function fetchViaCorsProxy(url: string): Promise<Response | null> {
+async function fetchViaCorsProxy(url: string, signal?: AbortSignal): Promise<Response | null> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-    
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-    const response = await fetch(proxyUrl, {
-      signal: controller.signal,
-    });
-    
-    clearTimeout(timeoutId);
+    const response = await fetch(proxyUrl, { signal });
     if (response.ok) return response;
   } catch (error) {
+    if ((error as Error).name === 'AbortError') throw error;
     console.warn('CORS proxy fetch failed:', error);
   }
   return null;
+}
+
+// Wrap a fetch function so it rejects (instead of resolving null) on failure
+async function mustSucceed(fn: () => Promise<Response | null>): Promise<Response> {
+  const result = await fn();
+  if (!result) throw new Error('fetch returned null');
+  return result;
 }
 
 async function fetchWithFallbacks(type: string, code?: string): Promise<Region[]> {
@@ -178,19 +161,44 @@ async function fetchWithFallbacks(type: string, code?: string): Promise<Region[]
     default: return [];
   }
 
-  // Try direct -> Edge Function -> CORS Proxy (with retry each)
-  let response = await fetchWithRetry(() => fetchDirect(url));
-  if (!response) response = await fetchWithRetry(() => fetchViaEdgeFunction(type, code));
-  if (!response) response = await fetchWithRetry(() => fetchViaCorsProxy(url));
+  const controller = new AbortController();
+  const { signal } = controller;
 
-  if (!response) {
+  // Auto-abort after 15s max
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    // Race all three strategies in parallel — first success wins
+    const promises = [
+      mustSucceed(() => fetchDirect(url, signal)),
+      mustSucceed(() => fetchViaEdgeFunction(type, code, signal)),
+      mustSucceed(() => fetchViaCorsProxy(url, signal)),
+    ];
+
+    // Use Promise.any polyfill pattern for ES2020 compat
+    const response = await new Promise<Response>((resolve, reject) => {
+      let rejections = 0;
+      const errors: Error[] = [];
+      for (const p of promises) {
+        p.then(resolve, (err) => {
+          errors.push(err);
+          rejections++;
+          if (rejections === promises.length) reject(new Error('All failed'));
+        });
+      }
+    });
+
+    clearTimeout(timeout);
+    controller.abort();
+
+    const result: WilayahResponse = await response.json();
+    return result.data || [];
+  } catch {
+    clearTimeout(timeout);
     if (type === 'provinces') return STATIC_PROVINCES;
     console.warn(`All fetch strategies failed for ${type}/${code}`);
     return [];
   }
-
-  const result: WilayahResponse = await response.json();
-  return result.data || [];
 }
 
 export async function fetchProvinces(): Promise<Region[]> {
